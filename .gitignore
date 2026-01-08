@@ -1,0 +1,16 @@
+# Ignore database exports
+*.sql
+
+# Ignore uploads
+uploads/
+avatars/
+
+# Ignore config files
+.env
+
+# Ignore vendor
+/vendor
+
+# OS files
+.DS_Store
+Thumbs.db
