@@ -1,5 +1,5 @@
-# Ignore database exports
-*.sql
+# # Ignore database exports
+# *.sql
 
 # Ignore uploads
 uploads/
