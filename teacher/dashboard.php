@@ -620,7 +620,7 @@ $upcoming_assignments = $upcoming_assignments_stmt->get_result();
             <div class="card">
                 <div class="card-header">
                     <h2>การส่งงานล่าสุด</h2>
-                    <a href="grades.php">ดูทั้งหมด →</a>
+                    <a href="assignments.php">ดูทั้งหมด →</a>
                 </div>
 
                 <?php if ($recent_submissions->num_rows > 0): ?>

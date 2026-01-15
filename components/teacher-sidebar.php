@@ -309,10 +309,7 @@ $teacher_courses = $courses_stmt->get_result();
         <div class="nav-section">
             <div class="nav-section-title">เมนู</div>
             <a href="dashboard.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'active' : '' ?>">
-                แดช์บอร์ด
-            </a>
-            <a href="profile.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'profile.php' ? 'active' : '' ?>">
-                โปรไฟล์
+                แดชบอร์ด
             </a>
         </div>
 

@@ -1,0 +1,712 @@
+<?php
+session_start();
+include "../config/db.php";
+
+if (!isset($_SESSION["user"]) || $_SESSION["user"]["role"] !== "teacher") {
+    header("Location: ../auth/login.php");
+    exit();
+}
+
+$user = $_SESSION["user"];
+$teacher_id = (int)$user["id"];
+
+function h($str)
+{
+    return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
+}
+
+function th_dt($datetime)
+{
+    if (!$datetime) return '-';
+    $date = DateTime::createFromFormat('Y-m-d H:i:s', $datetime);
+    if (!$date) return h($datetime);
+    $months_th = ['', 'มค.', 'กพ.', 'มีค.', 'เมย.', 'พค.', 'มิย.', 'กค.', 'สค.', 'กันย.', 'ตค.', 'พย.', 'ธค.'];
+    $day = $date->format('d');
+    $month = $months_th[(int)$date->format('m')];
+    $year = (int)$date->format('Y') + 543;
+    $time = $date->format('H:i');
+    return "$day $month $year $time น.";
+}
+
+/**
+ * Filters
+ */
+$q = trim($_GET['q'] ?? '');
+$course_id = $_GET['course_id'] ?? '';
+$assignment_id = $_GET['assignment_id'] ?? '';
+$status = $_GET['status'] ?? 'pending'; // pending | graded | all
+$sort = $_GET['sort'] ?? 'newest'; // newest | oldest
+
+$course_id_int = ($course_id !== '' && ctype_digit($course_id)) ? (int)$course_id : null;
+$assignment_id_int = ($assignment_id !== '' && ctype_digit($assignment_id)) ? (int)$assignment_id : null;
+
+/**
+ * Load teacher courses for dropdowns
+ */
+$courses_stmt = $conn->prepare("SELECT id, title FROM courses WHERE teacher_id = ? ORDER BY title ASC");
+$courses_stmt->bind_param("i", $teacher_id);
+$courses_stmt->execute();
+$courses_rs = $courses_stmt->get_result();
+
+/**
+ * Load assignments for dropdown (dependent on selected course)
+ */
+if ($course_id_int !== null) {
+    $a_stmt = $conn->prepare("SELECT a.id, a.title
+                              FROM assignments a
+                              INNER JOIN courses c ON a.course_id = c.id
+                              WHERE c.teacher_id = ? AND a.course_id = ?
+                              ORDER BY a.id DESC");
+    $a_stmt->bind_param("ii", $teacher_id, $course_id_int);
+} else {
+    $a_stmt = $conn->prepare("SELECT a.id, a.title
+                              FROM assignments a
+                              INNER JOIN courses c ON a.course_id = c.id
+                              WHERE c.teacher_id = ?
+                              ORDER BY a.id DESC
+                              LIMIT 200");
+    $a_stmt->bind_param("i", $teacher_id);
+}
+$a_stmt->execute();
+$assignments_rs = $a_stmt->get_result();
+
+/**
+ * Stats
+ */
+$stats_sql = "
+SELECT
+ (SELECT COUNT(*)
+    FROM assignment_submissions s
+    INNER JOIN assignments a ON s.assignment_id = a.id
+    INNER JOIN courses c ON a.course_id = c.id
+    WHERE c.teacher_id = ? AND s.grade IS NULL) AS pending_total,
+ (SELECT COUNT(*)
+    FROM assignment_submissions s
+    INNER JOIN assignments a ON s.assignment_id = a.id
+    INNER JOIN courses c ON a.course_id = c.id
+    WHERE c.teacher_id = ? AND s.grade IS NOT NULL) AS graded_total,
+ (SELECT COUNT(*)
+    FROM assignments a
+    INNER JOIN courses c ON a.course_id = c.id
+    WHERE c.teacher_id = ?) AS assignments_total
+";
+$stats_stmt = $conn->prepare($stats_sql);
+$stats_stmt->bind_param("iii", $teacher_id, $teacher_id, $teacher_id);
+$stats_stmt->execute();
+$stats = $stats_stmt->get_result()->fetch_assoc() ?: [
+    'pending_total' => 0,
+    'graded_total' => 0,
+    'assignments_total' => 0,
+];
+
+/**
+ * Submissions list
+ * Assumed schema:
+ * - assignment_submissions: id, assignment_id, student_id, file_path (optional), content (optional), submitted_at, grade, feedback (optional)
+ * - assignments: id, course_id, title, due_date
+ * - courses: id, teacher_id, title
+ * - users: id, name, email, rank
+ */
+$where = "WHERE c.teacher_id = ?";
+$params = [$teacher_id];
+$types = "i";
+
+if ($course_id_int !== null) {
+    $where .= " AND c.id = ?";
+    $params[] = $course_id_int;
+    $types .= "i";
+}
+if ($assignment_id_int !== null) {
+    $where .= " AND a.id = ?";
+    $params[] = $assignment_id_int;
+    $types .= "i";
+}
+
+if ($status === 'pending') {
+    $where .= " AND s.grade IS NULL";
+} elseif ($status === 'graded') {
+    $where .= " AND s.grade IS NOT NULL";
+}
+
+if ($q !== '') {
+    $where .= " AND (u.name LIKE ? OR u.email LIKE ? OR a.title LIKE ? OR c.title LIKE ?)";
+    $like = "%{$q}%";
+    $params = array_merge($params, [$like, $like, $like, $like]);
+    $types .= "ssss";
+}
+
+$orderBy = ($sort === 'oldest') ? "ORDER BY s.submitted_at ASC" : "ORDER BY s.submitted_at DESC";
+
+$sql = "
+SELECT
+  s.id AS submission_id,
+  s.submitted_at,
+  s.grade,
+  s.feedback,
+  s.file_path,
+  s.content,
+  a.id AS assignment_id,
+  a.title AS assignment_title,
+  a.due_date,
+  c.id AS course_id,
+  c.title AS course_title,
+  u.id AS student_id,
+  u.name AS student_name,
+  u.email,
+  u.rank
+FROM assignment_submissions s
+INNER JOIN assignments a ON s.assignment_id = a.id
+INNER JOIN courses c ON a.course_id = c.id
+INNER JOIN users u ON s.student_id = u.id
+{$where}
+{$orderBy}
+LIMIT 400
+";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$submissions = $stmt->get_result();
+
+?>
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grades - CyberLearn</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #2d3748;
+        }
+
+        .page-header p {
+            margin: 6px 0 0;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .actions-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 900;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: #f39c12;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #e67e22;
+        }
+
+        .btn-ghost {
+            background: #fff;
+            color: #2d3748;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-ghost:hover {
+            border-color: #f39c12;
+        }
+
+        .btn-secondary {
+            background: #667eea;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            filter: brightness(.95);
+        }
+
+        .btn-sm {
+            padding: 7px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 18px 0 22px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            background: rgba(243, 156, 18, .15);
+        }
+
+        .stat-num {
+            font-size: 26px;
+            font-weight: 900;
+            color: #2d3748;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, .08);
+            margin-bottom: 18px;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .filter-grid div input {
+            width: 90%;
+            /* min-width: 200px; */
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 6px;
+            font-weight: 900;
+        }
+
+        input[type="text"],
+        select,
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            border-color: #f39c12;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 38px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        thead th {
+            text-align: left;
+            font-size: 12px;
+            color: #718096;
+            padding: 12px;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+        }
+
+        tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 13px;
+            color: #2d3748;
+            vertical-align: top;
+        }
+
+        .muted {
+            color: #718096;
+            font-size: 12px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 900;
+            background: #edf2f7;
+            color: #2d3748;
+        }
+
+        .tag.pending {
+            background: rgba(243, 156, 18, .15);
+            color: #e67e22;
+        }
+
+        .tag.graded {
+            background: rgba(46, 204, 113, .15);
+            color: #27ae60;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .inline-grade {
+            display: grid;
+            grid-template-columns: 110px 1fr 110px;
+            gap: 10px;
+            align-items: start;
+        }
+
+        .inline-grade .btn {
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #a0aec0;
+        }
+
+        .empty .icon {
+            font-size: 46px;
+            margin-bottom: 8px;
+        }
+
+        @media(max-width:1024px) {
+            .filter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .inline-grade {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media(max-width:768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <?php include "../components/teacher-sidebar.php"; ?>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>เกรด</h1>
+            </div>
+            <div class="actions-row">
+                <button class="btn btn-ghost" onclick="window.location.href='assignments.php'">ไปหน้างาน</button>
+                <button class="btn btn-secondary" onclick="location.reload()">รีเฟรช</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📌</div>
+                <div>
+                    <div class="stat-num"><?= (int)$stats['pending_total'] ?></div>
+                    <div class="stat-label">รอให้เกรด</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div>
+                    <div class="stat-num"><?= (int)$stats['graded_total'] ?></div>
+                    <div class="stat-label">ให้เกรดแล้ว</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📝</div>
+                <div>
+                    <div class="stat-num"><?= (int)$stats['assignments_total'] ?></div>
+                    <div class="stat-label">จำนวนงานทั้งหมด</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card">
+            <form method="GET" class="filter-grid">
+                <div>
+                    <label>ค้นหา</label>
+                    <input type="text" name="q" value="<?= h($q) ?>" placeholder="ชื่อนักเรียน / อีเมล / ชื่องาน / ชื่อคอร์ส">
+                </div>
+
+                <div>
+                    <label>หลักสูตร</label>
+                    <select name="course_id" onchange="this.form.submit()">
+                        <option value="">ทั้งหมด</option>
+                        <?php mysqli_data_seek($courses_rs, 0); ?>
+                        <?php while ($c = $courses_rs->fetch_assoc()): ?>
+                            <option value="<?= (int)$c['id'] ?>" <?= ($course_id_int === (int)$c['id']) ? 'selected' : '' ?>>
+                                <?= h($c['title']) ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label>งาน</label>
+                    <select name="assignment_id">
+                        <option value="">ทั้งหมด</option>
+                        <?php while ($a = $assignments_rs->fetch_assoc()): ?>
+                            <option value="<?= (int)$a['id'] ?>" <?= ($assignment_id_int === (int)$a['id']) ? 'selected' : '' ?>>
+                                <?= h($a['title']) ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label>สถานะ</label>
+                    <select name="status">
+                        <option value="pending" <?= $status === 'pending' ? 'selected' : '' ?>>รอให้เกรด</option>
+                        <option value="graded" <?= $status === 'graded' ? 'selected' : '' ?>>ให้เกรดแล้ว</option>
+                        <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>เรียงตาม</label>
+                    <select name="sort">
+                        <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>ส่งล่าสุด</option>
+                        <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>ส่งเก่าสุด</option>
+                    </select>
+                </div>
+
+                <div>
+                    <button class="btn btn-primary" type="submit">ค้นหา</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- List -->
+        <div class="card">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>นักเรียน</th>
+                            <th>งาน</th>
+                            <th>หลักสูตร</th>
+                            <th>เวลาส่ง</th>
+                            <th>สถานะ</th>
+                            <th>ให้เกรด</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <?php if ($submissions->num_rows > 0): ?>
+                            <?php while ($s = $submissions->fetch_assoc()): ?>
+                                <?php
+                                $isGraded = ($s['grade'] !== null && $s['grade'] !== '');
+                                $statusTag = $isGraded ? 'graded' : 'pending';
+                                ?>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight:900;">
+                                            <?= h(($s['rank'] ?? '') . ' ' . ($s['student_name'] ?? '')) ?>
+                                        </div>
+                                        <div class="muted"><?= h($s['email'] ?? '-') ?></div>
+                                        <div class="muted">ID: <?= (int)$s['student_id'] ?></div>
+                                    </td>
+
+                                    <td>
+                                        <div style="font-weight:900;"><?= h($s['assignment_title'] ?? '-') ?></div>
+                                        <div class="muted">กำหนดส่ง: <?= h($s['due_date'] ?? '-') ?></div>
+                                        <?php if (!empty($s['file_path'])): ?>
+                                            <div style="margin-top:8px;">
+                                                <a class="btn btn-sm btn-ghost" href="../<?= h($s['file_path']) ?>" target="_blank" rel="noopener">
+                                                    ดูไฟล์ที่ส่ง
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <td><?= h($s['course_title'] ?? '-') ?></td>
+
+                                    <td><?= th_dt($s['submitted_at'] ?? '') ?></td>
+
+                                    <td>
+                                        <span class="tag <?= h($statusTag) ?>">
+                                            <?= $isGraded ? 'ให้เกรดแล้ว' : 'รอให้เกรด' ?>
+                                        </span>
+                                        <?php if ($isGraded): ?>
+                                            <div class="muted" style="margin-top:6px;">คะแนน: <?= h($s['grade']) ?></div>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <td>
+                                        <div class="inline-grade">
+                                            <div>
+                                                <label style="margin-bottom:6px;">คะแนน</label>
+                                                <input type="number" step="0.01" min="0" name="grade_<?= (int)$s['submission_id'] ?>"
+                                                    value="<?= h($s['grade'] ?? '') ?>"
+                                                    placeholder="เช่น 10 หรือ 9.5">
+                                                <div class="muted">ถ้าใช้ A/B/C ก็พิมพ์ได้ แต่ช่องเป็น number นะ (แก้เป็น text ได้)</div>
+                                            </div>
+
+                                            <div>
+                                                <label style="margin-bottom:6px;">Feedback</label>
+                                                <textarea name="feedback_<?= (int)$s['submission_id'] ?>" placeholder="คอมเมนต์ให้นักเรียน"><?= h($s['feedback'] ?? '') ?></textarea>
+                                                <?php if (!empty($s['content'])): ?>
+                                                    <div class="muted" style="margin-top:6px;">
+                                                        ข้อความที่ส่ง: <?= h(mb_strimwidth($s['content'], 0, 140, '…', 'UTF-8')) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+
+                                            <div>
+                                                <label style="margin-bottom:6px;">บันทึก</label>
+                                                <button class="btn btn-primary" onclick="saveGrade(<?= (int)$s['submission_id'] ?>)">
+                                                    บันทึก
+                                                </button>
+                                                <button class="btn btn-ghost" onclick="goGradePage(<?= (int)$s['submission_id'] ?>)">
+                                                    หน้าเต็ม
+                                                </button>
+                                                <div id="msg_<?= (int)$s['submission_id'] ?>" class="muted" style="margin-top:6px;"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6">
+                                    <div class="empty">
+                                        <div class="icon">📭</div>
+                                        <div>ยังไม่มีรายการส่งงานที่ตรงกับเงื่อนไข</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function goGradePage(submissionId) {
+            // ถ้าเธอมีหน้า grade_submission.php อยู่แล้วจาก dashboard ก็ใช้ต่อได้เลย
+            window.location.href = `grade_submission.php?id=${submissionId}`;
+        }
+
+        function saveGrade(submissionId) {
+            const gradeEl = document.querySelector(`[name="grade_${submissionId}"]`);
+            const feedbackEl = document.querySelector(`[name="feedback_${submissionId}"]`);
+            const msg = document.getElementById(`msg_${submissionId}`);
+
+            const grade = gradeEl ? gradeEl.value.trim() : '';
+            const feedback = feedbackEl ? feedbackEl.value.trim() : '';
+
+            msg.textContent = 'กำลังบันทึก...';
+
+            fetch('../api/teacher_api.php?action=update_grade', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'submission_id=' + encodeURIComponent(submissionId) +
+                        '&grade=' + encodeURIComponent(grade) +
+                        '&feedback=' + encodeURIComponent(feedback)
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        msg.textContent = 'บันทึกแล้ว ✅';
+                        setTimeout(() => {
+                            msg.textContent = '';
+                        }, 1500);
+                    } else {
+                        msg.textContent = data.message || 'บันทึกไม่สำเร็จ';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    msg.textContent = 'เกิดข้อผิดพลาด';
+                });
+        }
+    </script>
+</body>
+
+</html>
