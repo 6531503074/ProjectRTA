@@ -415,7 +415,7 @@ $recent_announcements = $recent_announcements_stmt->get_result();
                             <h3><?php echo htmlspecialchars($course['title']); ?></h3>
                             <p><?php echo htmlspecialchars($course['description']); ?></p>
                             <div class="teacher">👨‍🏫 <?php echo htmlspecialchars($course['teacher_name'] ?? 'No teacher assigned'); ?></div>
-                            <a href="course_detail.php?id=<?php echo $course['id']; ?>" class="view-btn">ดูหลักสูตร</a>
+                            <a href="course-dashboard.php?id=<?php echo $course['id']; ?>" class="view-btn">ดูหลักสูตร</a>
                         </div>
                     <?php endwhile; ?>
                 </div>

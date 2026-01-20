@@ -152,14 +152,15 @@ CREATE TABLE `courses` (
   `id` int(11) NOT NULL,
   `title` varchar(100) DEFAULT NULL,
   `description` text DEFAULT NULL,
-  `teacher_id` int(11) DEFAULT NULL
+  `teacher_id` int(11) DEFAULT NULL,
+  `course_level` enum('1','2','3') DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `courses`
 --
 
-INSERT INTO `courses` (`id`, `title`, `description`, `teacher_id`) VALUES
+INSERT INTO `courses` (`id`, `title`, `description`, `teacher_id`, `course_level`) VALUES
 (1, 'Web Programming', 'Learn HTML, CSS, PHP, and MySQL', 2),
 (2, 'Database Systems', 'MySQL, ER Diagram, SQL Queries', 2),
 (3, 'Software Engineering', 'SDLC, Agile, UML Diagrams', 2);

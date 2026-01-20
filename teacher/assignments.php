@@ -1,6 +1,7 @@
 <?php
 session_start();
 include "../config/db.php";
+date_default_timezone_set('Asia/Bangkok');
 
 if (!isset($_SESSION["user"]) || $_SESSION["user"]["role"] !== "teacher") {
     header("Location: ../auth/login.php");
@@ -17,16 +18,21 @@ function h($str)
 {
     return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
 }
-function th_date($ymd)
+function th_date($datetime)
 {
-    if (!$ymd) return '-';
-    $date = DateTime::createFromFormat('Y-m-d', $ymd);
-    if (!$date) return h($ymd);
-    $months_th = ['', 'มค.', 'กพ.', 'มีค.', 'เมย.', 'พค.', 'มิย.', 'กค.', 'สค.', 'กันย.', 'ตค.', 'พย.', 'ธค.'];
-    $day = $date->format('d');
-    $month = $months_th[(int)$date->format('m')];
-    $year = (int)$date->format('Y') + 543;
-    return "$day $month $year";
+    if (!$datetime) return '-';
+    $timestamp = strtotime($datetime);
+    if (!$timestamp) return h($datetime);
+    
+    $months_th = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    $day = date('j', $timestamp);
+    $month = $months_th[(int)date('n', $timestamp)];
+    $year = (int)date('Y', $timestamp) + 543;
+    $time = date('H:i', $timestamp);
+    
+    // If time is 00:00:00 (legacy dates), maybe hide it? 
+    // But now we use datetime-local so time is relevant.
+    return "$day $month $year $time";
 }
 
 /**
@@ -92,6 +98,20 @@ $orderBy = "ORDER BY a.due_date ASC";
 if ($sort === 'due_desc') $orderBy = "ORDER BY a.due_date DESC";
 if ($sort === 'newest')   $orderBy = "ORDER BY a.id DESC";
 
+// Pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 5;
+if (!in_array($limit, [5, 10, 20, 50])) $limit = 5;
+$offset = ($page - 1) * $limit;
+
+// Count total for pagination
+$count_sql = "SELECT COUNT(*) as total FROM assignments a INNER JOIN courses c ON a.course_id = c.id {$where}";
+$count_stmt = $conn->prepare($count_sql);
+$count_stmt->bind_param($types, ...$params);
+$count_stmt->execute();
+$total_rows = $count_stmt->get_result()->fetch_assoc()['total'];
+$total_pages = ceil($total_rows / $limit);
+
 $sql = "
 SELECT
   a.*,
@@ -103,8 +123,14 @@ FROM assignments a
 INNER JOIN courses c ON a.course_id = c.id
 {$where}
 {$orderBy}
-LIMIT 200
+LIMIT ? OFFSET ?
 ";
+
+// Add limit/offset to params
+$params[] = $limit;
+$params[] = $offset;
+$types .= "ii";
+
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param($types, ...$params);
@@ -152,366 +178,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Assignments - CyberLearn</title>
-
-    <style>
-        *{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f7fa;
-            margin: 0;
-        }
-
-        .main-content {
-            margin-left: 280px;
-            padding: 30px;
-            min-height: 100vh;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .page-header h1 {
-            margin: 0;
-            font-size: 28px;
-            color: #2d3748;
-        }
-
-        .page-header p {
-            margin: 6px 0 0;
-            color: #718096;
-            font-size: 14px;
-        }
-
-        .actions-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 10px 14px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 13px;
-            transition: 0.2s;
-        }
-
-        .btn-primary {
-            background: #f39c12;
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            background: #e67e22;
-        }
-
-        .btn-ghost {
-            background: #fff;
-            color: #2d3748;
-            border: 2px solid #e2e8f0;
-        }
-
-        .btn-ghost:hover {
-            border-color: #f39c12;
-        }
-
-        /* stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin: 18px 0 22px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .stat-icon {
-            width: 46px;
-            height: 46px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            background: rgba(243, 156, 18, .15);
-        }
-
-        .stat-num {
-            font-size: 26px;
-            font-weight: 800;
-            color: #2d3748;
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: 13px;
-            color: #718096;
-            margin-top: 4px;
-        }
-
-        /* filter card */
-        .card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 18px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, .08);
-            margin-bottom: 18px;
-        }
-
-        .filter-grid {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr 1fr 1fr auto;
-            gap: 12px;
-            align-items: end;
-        }
-
-        .filter-grid div input{
-            width: 90%;
-            /* min-width: 200px; */
-        }
-
-        label {
-            display: block;
-            font-size: 12px;
-            color: #718096;
-            margin-bottom: 6px;
-            font-weight: 700;
-        }
-
-        input[type="text"],
-        select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 13px;
-            outline: none;
-            background: #fff;
-        }
-
-        input[type="text"]:focus,
-        select:focus {
-            border-color: #f39c12;
-        }
-
-        /* table */
-        .table-wrap {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-
-        thead th {
-            text-align: left;
-            font-size: 12px;
-            color: #718096;
-            padding: 12px;
-            border-bottom: 2px solid #e2e8f0;
-            white-space: nowrap;
-        }
-
-        tbody td {
-            padding: 12px;
-            border-bottom: 1px solid #edf2f7;
-            font-size: 13px;
-            color: #2d3748;
-            vertical-align: top;
-        }
-
-        .tag {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 800;
-            background: #edf2f7;
-            color: #2d3748;
-        }
-
-        .tag.open {
-            background: rgba(46, 204, 113, .15);
-            color: #27ae60;
-        }
-
-        .tag.overdue {
-            background: rgba(231, 76, 60, .12);
-            color: #e74c3c;
-        }
-
-        .tag.soon {
-            background: rgba(243, 156, 18, .15);
-            color: #e67e22;
-        }
-
-        .muted {
-            color: #718096;
-            font-size: 12px;
-        }
-
-        .row-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .btn-sm {
-            padding: 7px 10px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .btn-danger {
-            background: #e74c3c;
-            color: #fff;
-        }
-
-        .btn-danger:hover {
-            filter: brightness(.95);
-        }
-
-        .btn-secondary {
-            background: #667eea;
-            color: #fff;
-        }
-
-        .btn-secondary:hover {
-            filter: brightness(.95);
-        }
-
-        .empty {
-            text-align: center;
-            padding: 40px;
-            color: #a0aec0;
-        }
-
-        .empty .icon {
-            font-size: 46px;
-            margin-bottom: 8px;
-        }
-
-        /* modal */
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, .5);
-            z-index: 10000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: #fff;
-            border-radius: 14px;
-            width: min(560px, 92vw);
-            max-height: 82vh;
-            overflow: auto;
-            padding: 22px;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .modal-header h3 {
-            margin: 0;
-            color: #2d3748;
-        }
-
-        .modal-close {
-            font-size: 26px;
-            cursor: pointer;
-            color: #a0aec0;
-        }
-
-        .modal-close:hover {
-            color: #2d3748;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 13px;
-            outline: none;
-        }
-
-        textarea:focus {
-            border-color: #f39c12;
-        }
-
-        .help {
-            font-size: 12px;
-            color: #718096;
-            margin-top: 6px;
-        }
-
-        @media(max-width:1024px) {
-            .filter-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        @media(max-width:768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 20px;
-            }
-
-            .filter-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <link href="teacher.css" rel="stylesheet">
 </head>
 
 <body>
@@ -524,7 +191,6 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
             </div>
             <div class="actions-row">
                 <button class="btn btn-primary" onclick="openAssignmentModal()">➕ สร้างงานใหม่</button>
-                <button class="btn btn-ghost" onclick="window.location.href='grades.php'">ไปหน้าให้เกรด</button>
             </div>
         </div>
 
@@ -601,6 +267,8 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                     </select>
                 </div>
 
+
+
                 <div>
                     <button class="btn btn-primary" type="submit">ค้นหา</button>
                 </div>
@@ -609,6 +277,24 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
 
         <!-- List -->
         <div class="card">
+            <div class="card-header" style="justify-content: space-between; align-items: center; display: flex;">
+                <h2 style="font-size: 1.25rem;">รายการงาน</h2>
+                <form method="GET" style="margin:0;">
+                    <!-- Preserve other filters -->
+                    <input type="hidden" name="q" value="<?= h($q) ?>">
+                    <input type="hidden" name="course_id" value="<?= h($course_id) ?>">
+                    <input type="hidden" name="status" value="<?= h($status) ?>">
+                    <input type="hidden" name="sort" value="<?= h($sort) ?>">
+                    <input type="hidden" name="page" value="1"> <!-- Reset page on limit change -->
+                    
+                    <select name="limit" onchange="this.form.submit()" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px;">
+                        <option value="5" <?= $limit == 5 ? 'selected' : '' ?>>แสดง 5 แถว</option>
+                        <option value="10" <?= $limit == 10 ? 'selected' : '' ?>>แสดง 10 แถว</option>
+                        <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>แสดง 20 แถว</option>
+                        <option value="50" <?= $limit == 50 ? 'selected' : '' ?>>แสดง 50 แถว</option>
+                    </select>
+                </form>
+            </div>
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -631,14 +317,15 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                                 $soon = false;
 
                                 if ($due) {
-                                    $due_dt = DateTime::createFromFormat('Y-m-d', $due);
-                                    $today = new DateTime('today');
-                                    if ($due_dt < $today) {
+                                    $due_dt = new DateTime($due); // Parse full datetime
+                                    $now = new DateTime();
+                                    
+                                    if ($due_dt < $now) {
                                         $dueTag = 'overdue';
                                         $dueText = 'หมดเขตแล้ว';
                                     } else {
                                         // ใกล้ถึง: ภายใน 3 วัน
-                                        $diffDays = (int)$today->diff($due_dt)->format('%a');
+                                        $diffDays = (int)$now->diff($due_dt)->format('%a');
                                         if ($diffDays <= 3) {
                                             $dueTag = 'soon';
                                             $dueText = 'ใกล้ถึง';
@@ -659,7 +346,6 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                                 <tr>
                                     <td>
                                         <div style="font-weight:800;"><?= h($a['title']) ?></div>
-                                        <div class="muted"><?= $a['description'] ? h(mb_strimwidth($a['description'], 0, 90, '…', 'UTF-8')) : '—' ?></div>
                                     </td>
                                     <td><?= h($a['course_title']) ?></td>
                                     <td>
@@ -676,8 +362,8 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                                     <td>
                                         <div class="row-actions">
                                             <button class="btn btn-sm btn-secondary" onclick="viewAssignment(<?= (int)$a['id'] ?>)">ดู/จัดการ</button>
-                                            <button class="btn btn-sm btn-ghost" onclick="editAssignment(<?= (int)$a['id'] ?>)">แก้ไข</button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteAssignment(<?= (int)$a['id'] ?>)">ลบ</button>
+                                            <button id="chat-btn-<?= (int)$a['id'] ?>" class="btn btn-sm btn-ghost" onclick="openChatModal(<?= (int)$a['id'] ?>, '<?= h($a['title']) ?>')">💬 แชท</button>
+                                            
                                         </div>
                                     </td>
                                 </tr>
@@ -685,8 +371,8 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                         <?php else: ?>
                             <tr>
                                 <td colspan="6">
-                                    <div class="empty">
-                                        <div class="icon">🗂️</div>
+                                    <div class="empty-state">
+                                        <div class="empty-state-icon">🗂️</div>
                                         <div>ยังไม่เจองานที่ตรงกับเงื่อนไข</div>
                                     </div>
                                 </td>
@@ -695,6 +381,33 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination -->
+            <?php if ($total_pages > 1): ?>
+                <div style="padding: 20px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #edf2f7;">
+                    <?php if ($page > 1): ?>
+                        <a href="?page=<?= $page - 1 ?>&limit=<?= $limit ?>&q=<?= h($q) ?>&course_id=<?= h($course_id) ?>&status=<?= h($status) ?>&sort=<?= h($sort) ?>" 
+                           class="btn btn-sm btn-ghost" style="color:var(--gray);">
+                            &lt;
+                        </a>
+                    <?php endif; ?>
+
+                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                        <a href="?page=<?= $i ?>&limit=<?= $limit ?>&q=<?= h($q) ?>&course_id=<?= h($course_id) ?>&status=<?= h($status) ?>&sort=<?= h($sort) ?>"
+                           class="btn btn-sm <?= $i == $page ? 'btn-primary' : 'btn-ghost' ?>" 
+                           style="<?= $i != $page ? 'color:var(--dark);' : '' ?>">
+                            <?= $i ?>
+                        </a>
+                    <?php endfor; ?>
+
+                    <?php if ($page < $total_pages): ?>
+                        <a href="?page=<?= $page + 1 ?>&limit=<?= $limit ?>&q=<?= h($q) ?>&course_id=<?= h($course_id) ?>&status=<?= h($status) ?>&sort=<?= h($sort) ?>" 
+                           class="btn btn-sm btn-ghost" style="color:var(--gray);">
+                            &gt;
+                        </a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -727,8 +440,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
 
                     <div>
                         <label>กำหนดส่ง *</label>
-                        <input type="date" name="due_date" required>
-                        <div class="help">ตั้งวันส่งให้ชัด จะได้ตามงานได้แบบไม่ต้องสวดมนต์</div>
+                        <input type="datetime-local" name="due_date" class="form-control" required>
                     </div>
                 </div>
 
@@ -749,7 +461,30 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
         </div>
     </div>
 
+    <!-- Chat Modal -->
+    <div class="modal" id="chatModal">
+        <div class="modal-content" style="width: 500px; height: 600px; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3 id="chatTitle">Chat</h3>
+                <span class="modal-close" onclick="closeChatModal()">×</span>
+            </div>
+            
+            <div class="chat-container">
+                <div class="messages-list" id="chatMessages">
+                    <!-- Messages will load here -->
+                    <div style="text-align:center; padding: 20px; color:#a0aec0;">Loading...</div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ..." autocomplete="off">
+                    <button class="btn btn-primary" onclick="sendMessage()">ส่ง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // ... (existing assignment functions) ...
         function openAssignmentModal() {
             document.getElementById('assignmentModal').classList.add('show');
         }
@@ -795,7 +530,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
         }
 
         function deleteAssignment(id) {
-            if (!confirm('ลบงานนี้แน่ใจนะ? (ลบแล้วไม่ใช่ลบแค่จากใจ 😭)')) return;
+            if (!confirm('ลบงานนี้แน่ใจนะ?')) return;
 
             fetch('../api/teacher_api.php?action=delete_assignment', {
                     method: 'POST',
@@ -815,11 +550,178 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                 });
         }
 
+        // --- Chat Logic ---
+        let currentChatId = null;
+        let chatPollInterval = null;
+        const currentUserId = <?= (int)$teacher_id ?>; // Teacher's ID
+
+        function openChatModal(id, title) {
+            // Optimistic update: Remove badge immediately
+            const btn = document.getElementById(`chat-btn-${id}`);
+            if (btn) {
+                const badge = btn.querySelector('.chat-badge');
+                if (badge) badge.remove();
+            }
+
+            currentChatId = id;
+            document.getElementById('chatTitle').textContent = '💬 ' + title;
+            document.getElementById('chatModal').classList.add('show');
+            document.getElementById('chatMessages').innerHTML = '<div style="text-align:center; padding: 20px; color:#a0aec0;">กำลังโหลด...</div>';
+            
+            loadMessages(true);
+            startPolling();
+        }
+        
+        function closeChatModal() {
+            document.getElementById('chatModal').classList.remove('show');
+            stopPolling();
+            currentChatId = null;
+            loadUnreadCounts(); // Refresh badges
+        }
+        
+        function startPolling() {
+            if (chatPollInterval) clearInterval(chatPollInterval);
+            chatPollInterval = setInterval(() => loadMessages(false), 3000);
+        }
+        
+        function stopPolling() {
+            if (chatPollInterval) clearInterval(chatPollInterval);
+        }
+        
+        let lastMessageId = 0;
+        
+        function loadMessages(isFullLoad) {
+            if (!currentChatId) return;
+            
+            const lastId = isFullLoad ? 0 : lastMessageId;
+            
+            fetch(`../api/assignment_chat_api.php?action=get_messages&assignment_id=${currentChatId}&last_id=${lastId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const list = document.getElementById('chatMessages');
+                    
+                    if (isFullLoad) {
+                        list.innerHTML = '';
+                        lastMessageId = 0;
+                    }
+                    
+                    if (data.messages.length > 0) {
+                        if (data.messages.length > 0) {
+                           lastMessageId = data.messages[data.messages.length - 1].id;
+                        }
+                        
+                        data.messages.forEach(msg => {
+                            const isMe = (parseInt(msg.user_id) === currentUserId);
+                            const div = document.createElement('div');
+                            div.className = `chat-message ${isMe ? 'me' : 'other'}`;
+                            
+                            // Format timestamp
+                            const date = new Date(msg.created_at);
+                            const timeStr = date.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+                            
+                            div.innerHTML = `
+                                <div class="msg-header">${isMe ? 'คุณ' : msg.name}</div>
+                                <div>${escapeHtml(msg.message)}</div>
+                                <div class="msg-time">${timeStr}</div>
+                            `;
+                            list.appendChild(div);
+                        });
+                        
+                        // Scroll to bottom
+                        if (isFullLoad || data.messages.length > 0) {
+                            list.scrollTop = list.scrollHeight;
+                        }
+                        } else if (isFullLoad) {
+                        list.innerHTML = '<div style="text-align:center; padding: 20px; color:#a0aec0;">ยังไม่มีข้อความ</div>';
+                    }
+                    
+                    // Refresh badges immediately to clear unread count for this item
+                    loadUnreadCounts();
+                }
+            })
+            .catch(err => console.error(err));
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg || !currentChatId) return;
+            
+            fetch('../api/assignment_chat_api.php?action=send_message', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    assignment_id: currentChatId,
+                    message: msg
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    input.value = '';
+                    loadMessages(false); // Load immediately
+                } else {
+                    alert('ส่งข้อความไม่สำเร็จ: ' + data.message);
+                }
+            });
+        }
+        
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function escapeHtml(text) {
+            var map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
         // close modal when click outside
         window.addEventListener('click', (event) => {
             if (event.target.classList.contains('modal')) {
                 event.target.classList.remove('show');
+                if (event.target.id === 'chatModal') {
+                    stopPolling();
+                    loadUnreadCounts();
+                }
             }
+        });
+
+        function loadUnreadCounts() {
+            fetch('../api/assignment_chat_api.php?action=get_unread_counts')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    for (const [id, count] of Object.entries(data.counts)) {
+                        const btn = document.getElementById(`chat-btn-${id}`);
+                        if (btn) {
+                            let badge = btn.querySelector('.chat-badge');
+                            if (count > 0) {
+                                if (!badge) {
+                                    badge = document.createElement('span');
+                                    badge.className = 'chat-badge';
+                                    btn.appendChild(badge);
+                                }
+                                badge.textContent = count;
+                            } else {
+                                if (badge) badge.remove();
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(e => console.error(e));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUnreadCounts();
+            setInterval(loadUnreadCounts, 10000); // Check every 10s
         });
     </script>
 </body>

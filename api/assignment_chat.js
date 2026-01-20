@@ -267,14 +267,24 @@ function sendAssignmentMessage(assignmentId) {
 }
 
 // Allow Enter key to send message
+// Allow Enter key to send message
 document.addEventListener('DOMContentLoaded', function() {
     // Add enter key listener for all chat inputs
     document.addEventListener('keypress', function(e) {
         if (e.target.id && e.target.id.startsWith('chat-input-')) {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); // Prevent newline in textarea
                 const assignmentId = e.target.id.replace('chat-input-', '');
                 sendAssignmentMessage(parseInt(assignmentId));
             }
+        }
+    });
+
+    // Auto-resize textarea
+    document.addEventListener('input', function(e) {
+        if (e.target.tagName === 'TEXTAREA' && e.target.id && e.target.id.startsWith('chat-input-')) {
+            e.target.style.height = 'auto';
+            e.target.style.height = (e.target.scrollHeight) + 'px';
         }
     });
 });

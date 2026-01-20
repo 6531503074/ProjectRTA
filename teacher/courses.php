@@ -103,407 +103,7 @@ $courses = $stmt->get_result();
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Courses - CyberLearn</title>
-    <style>
-        *{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f7fa;
-            margin: 0;
-        }
-
-        .main-content {
-            margin-left: 280px;
-            padding: 30px;
-            min-height: 100vh;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .page-header h1 {
-            margin: 0;
-            font-size: 28px;
-            color: #2d3748;
-        }
-
-        .page-header p {
-            margin: 6px 0 0;
-            color: #718096;
-            font-size: 14px;
-        }
-
-        .actions-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 10px 14px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 900;
-            font-size: 13px;
-            transition: 0.2s;
-        }
-
-        .btn-primary {
-            background: #f39c12;
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            background: #e67e22;
-        }
-
-        .btn-ghost {
-            background: #fff;
-            color: #2d3748;
-            border: 2px solid #e2e8f0;
-        }
-
-        .btn-ghost:hover {
-            border-color: #f39c12;
-        }
-
-        .btn-danger {
-            background: #e74c3c;
-            color: #fff;
-        }
-
-        .btn-danger:hover {
-            filter: brightness(.95);
-        }
-
-        .btn-secondary {
-            background: #667eea;
-            color: #fff;
-        }
-
-        .btn-secondary:hover {
-            filter: brightness(.95);
-        }
-
-        .btn-sm {
-            padding: 7px 10px;
-            border-radius: 10px;
-            font-size: 12px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin: 18px 0 22px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-            .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .stat-icon {
-            width: 46px;
-            height: 46px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            background: rgba(243, 156, 18, .15);
-        }
-
-        .stat-num {
-            font-size: 26px;
-            font-weight: 900;
-            color: #2d3748;
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: 13px;
-            color: #718096;
-            margin-top: 4px;
-        }
-
-        .card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 18px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, .08);
-            margin-bottom: 18px;
-        }
-
-        .filter-grid {
-            display: grid;
-            grid-template-columns: 1.3fr 1fr auto;
-            gap: 12px;
-            align-items: end;
-        }
-
-        .filter-grid div input {
-            width: 90%;
-            /* min-width: 200px; */
-        }
-
-        label {
-            display: block;
-            font-size: 12px;
-            color: #718096;
-            margin-bottom: 6px;
-            font-weight: 900;
-        }
-
-        input[type="text"],
-        select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 13px;
-            outline: none;
-            background: #fff;
-        }
-
-        input[type="text"]:focus,
-        select:focus {
-            border-color: #f39c12;
-        }
-
-        .courses-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 14px;
-        }
-
-        .course-card {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-            border-radius: 14px;
-            padding: 18px;
-            color: #fff;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, .08);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .course-card .title {
-            font-size: 16px;
-            font-weight: 900;
-            margin: 0 0 8px;
-        }
-
-        .course-card .desc {
-            font-size: 12px;
-            opacity: .92;
-            margin: 0 0 12px;
-            line-height: 1.45;
-        }
-
-        .meta-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            font-size: 12px;
-            opacity: .95;
-        }
-
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, .18);
-            font-weight: 800;
-        }
-
-        .card-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 14px;
-            flex-wrap: wrap;
-        }
-
-        .card-actions a,
-        .card-actions button {
-            border: none;
-            cursor: pointer;
-            text-decoration: none;
-            padding: 8px 10px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 900;
-            background: rgba(255, 255, 255, .18);
-            color: #fff;
-            transition: .2s;
-        }
-
-        .card-actions a:hover,
-        .card-actions button:hover {
-            background: rgba(255, 255, 255, .26);
-        }
-
-        .danger {
-            background: rgba(231, 76, 60, .25) !important;
-        }
-
-        .danger:hover {
-            background: rgba(231, 76, 60, .35) !important;
-        }
-
-        .empty {
-            text-align: center;
-            padding: 50px 18px;
-            color: #a0aec0;
-        }
-
-        .empty .icon {
-            font-size: 46px;
-            margin-bottom: 8px;
-        }
-
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 10000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-header h3 {
-            font-size: 20px;
-            color: #2d3748;
-        }
-
-        .modal-close {
-            font-size: 24px;
-            cursor: pointer;
-            color: #a0aec0;
-        }
-
-        .modal-close:hover {
-            color: #2d3748;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #2d3748;
-        }
-
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #f39c12;
-        }
-        
-
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
-            background: #f39c12;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .btn-submit:hover {
-            background: #e67e22;
-        }
-
-        @media (max-width: 1024px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 20px;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .quick-actions {
-                flex-direction: column;
-            }
-        }
-        @media(max-width:1024px) {
-            .filter-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-    </style>
+    <link href="teacher.css" rel="stylesheet">
 </head>
 
 <body>
@@ -515,8 +115,9 @@ $courses = $stmt->get_result();
                 <h1>หลักสูตรทั้งหมด</h1>
             </div>
             <div class="actions-row">
-                <button class="btn btn-primary" onclick="openCreateCourseModal()">➕ สร้างหลักสูตร</button>
-                <button class="btn btn-ghost" onclick="window.location.href='dashboard.php'">กลับแดชบอร์ด</button>
+                <button class="btn btn-primary" onclick="openCreateCourseModal()">
+                    <span>+</span> สร้างหลักสูตรใหม่
+                </button>
             </div>
         </div>
 
@@ -553,84 +154,75 @@ $courses = $stmt->get_result();
         </div>
 
         <!-- Filters -->
-        <div class="card">
+        <div class="filter-section">
             <form method="GET" class="filter-grid">
                 <div>
-                    <label>ค้นหา</label>
-                    <input type="text" name="q" value="<?= h($q) ?>" placeholder="ชื่อหลักสูตร / คำอธิบาย">
+                    <label class="form-label">ค้นหา</label>
+                    <input type="text" name="q" class="form-control" value="<?= h($q) ?>" placeholder="ค้นหาชื่อหลักสูตร หรือคำอธิบาย...">
                 </div>
 
                 <div>
-                    <label>เรียงตาม</label>
-                    <select name="sort">
-                        <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>สร้างล่าสุด</option>
-                        <option value="title_asc" <?= $sort === 'title_asc' ? 'selected' : '' ?>>ชื่อ A-Z</option>
-                        <option value="students_desc" <?= $sort === 'students_desc' ? 'selected' : '' ?>>นักเรียนเยอะสุด</option>
-                        <option value="pending_desc" <?= $sort === 'pending_desc' ? 'selected' : '' ?>>งานรอให้เกรดเยอะสุด</option>
+                    <label class="form-label">เรียงตาม</label>
+                    <select name="sort" class="form-select">
+                        <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>✨ สร้างล่าสุด</option>
+                        <option value="title_asc" <?= $sort === 'title_asc' ? 'selected' : '' ?>>📝 ชื่อ A-Z</option>
+                        <option value="students_desc" <?= $sort === 'students_desc' ? 'selected' : '' ?>>👥 นักเรียนเยอะสุด</option>
+                        <option value="pending_desc" <?= $sort === 'pending_desc' ? 'selected' : '' ?>>📌 งานรอตรวจเยอะสุด</option>
                     </select>
                 </div>
 
                 <div>
-                    <button class="btn btn-primary" type="submit">ค้นหา</button>
+                    <button class="btn btn-primary" style="width: 100%; height: 47px;" type="submit">ค้นหา</button>
                 </div>
             </form>
         </div>
 
         <!-- Courses Grid -->
-        <div class="card">
-            <?php if ($courses->num_rows > 0): ?>
-                <div class="courses-grid">
-                    <?php while ($c = $courses->fetch_assoc()): ?>
-                        <div class="course-card">
-                            <div class="title"><?= h($c['title']) ?></div>
-                            <div class="desc">
-                                <?= $c['description'] ? h(mb_strimwidth($c['description'], 0, 120, '…', 'UTF-8')) : '— ไม่มีรายละเอียด —' ?>
+        <?php if ($courses->num_rows > 0): ?>
+            <div class="courses-grid">
+                <?php while ($c = $courses->fetch_assoc()): ?>
+                    <div class="course-card">
+                        <div class="course-card-body">
+                            <div class="course-title" style="color: black;"><?= h($c['title']) ?></div>
+                            <div class="course-desc">
+                                <?= $c['description'] ? h($c['description']) : '— ไม่มีรายละเอียด —' ?>
                             </div>
 
-                            <div class="meta-row">
-                                <span class="pill">👥 <?= (int)$c['student_count'] ?> นักเรียน</span>
-                                <span class="pill">📝 <?= (int)$c['assignment_count'] ?> งาน</span>
-                                <span class="pill">📌 <?= (int)$c['pending_grade_count'] ?> รอให้เกรด</span>
-                            </div>
-
-                            <div class="card-actions">
-                                <a href="course_detail.php?id=<?= (int)$c['id'] ?>">จัดการคอร์ส</a>
-                                <a href="students.php?course_id=<?= (int)$c['id'] ?>">ดูนักเรียน</a>
-                                <a href="assignments.php?course_id=<?= (int)$c['id'] ?>">ดูงาน</a>
-                                <button onclick="openEditCourseModal(<?= (int)$c['id'] ?>, '<?= h($c['title']) ?>', `<?= h($c['description'] ?? '') ?>`)">แก้ไข</button>
-                                <button class="danger" onclick="deleteCourse(<?= (int)$c['id'] ?>)">ลบ</button>
+                            <div class="course-meta">
+                                <span class="meta-pill">👥 <?= (int)$c['student_count'] ?> นักเรียน</span>
+                                <span class="meta-pill">📝 <?= (int)$c['assignment_count'] ?> งาน</span>
+                                <?php if($c['pending_grade_count'] > 0): ?>
+                                    <span class="meta-pill" style="background: #fff5f5; color: #e53e3e;">📌 <?= (int)$c['pending_grade_count'] ?> รอตรวจ</span>
+                                <?php else: ?>
+                                    <span class="meta-pill">📌 ครบถ้วน</span>
+                                <?php endif; ?>
                             </div>
                         </div>
-                    <?php endwhile; ?>
-                </div>
-            <?php else: ?>
-                <div class="empty">
-                    <div class="icon">📚</div>
-                    <div>ยังไม่มีหลักสูตร หรือไม่พบผลลัพธ์จากการค้นหา</div>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
 
-    <!-- Create Course Modal -->
-    <div class="modal" id="createCourseModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>สร้างหลักสูตรใหม่</h3>
-                <span class="modal-close" onclick="closeCreateCourseModal()">×</span>
+                        <div class="course-actions">
+                            <a href="course_detail.php?id=<?= (int)$c['id'] ?>" class="action-btn btn-manage">
+                                ⚙️ จัดการ
+                            </a>
+                            <a href="students.php?course_id=<?= (int)$c['id'] ?>" class="action-btn btn-view">
+                                👥 นักเรียน
+                            </a>
+                            <button onclick="openEditCourseModal(<?= (int)$c['id'] ?>, '<?= h($c['title']) ?>', `<?= h($c['description'] ?? '') ?>`, '<?= h($c['course_level'] ?? '1') ?>')" class="action-btn btn-edit">
+                                ✏️ แก้ไข
+                            </button>
+                            <button onclick="deleteCourse(<?= (int)$c['id'] ?>)" class="action-btn btn-delete">
+                                🗑️ ลบ
+                            </button>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
             </div>
-            <form id="createCourseForm" onsubmit="createCourse(event)">
-                <div class="form-group">
-                    <label>ชื่อหลักสูตร *</label>
-                    <input type="text" name="title" required placeholder="ใส่ชื่อหลักสูตร">
-                </div>
-                <div class="form-group">
-                    <label>รายละเอียด</label>
-                    <textarea name="description" rows="4" placeholder="ใส่รายละเอียดหลักสูตร"></textarea>
-                </div>
-                <button type="submit" class="btn-submit">สร้างหลักสูตร</button>
-            </form>
-        </div>
+        <?php else: ?>
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 16px;">�</div>
+                <h3>ไม่พบรายวิชา</h3>
+                <p>ลองเปลี่ยนคำค้นหา หรือสร้างรายวิชาใหม่</p>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- Edit Course Modal -->
@@ -644,13 +236,20 @@ $courses = $stmt->get_result();
             <form id="editCourseForm" onsubmit="updateCourse(event)">
                 <input type="hidden" name="id" id="edit_course_id">
                 <div class="form-group">
-                    <label>ชื่อหลักสูตร *</label>
-                    <input type="text" name="title" id="edit_course_title" required>
+                    <label class="form-label">ชื่อหลักสูตร <span style="color:red">*</span></label>
+                    <input type="text" id="edit_title" name="title" class="form-control" required>
                 </div>
-
                 <div class="form-group">
-                    <label>รายละเอียด</label>
-                    <textarea name="description" id="edit_course_desc"></textarea>
+                    <label class="form-label">ระดับชั้น <span style="color:red">*</span></label>
+                    <select id="edit_course_level" name="course_level" class="form-control" required>
+                        <option value="1">🌱 พื้นฐาน (Basic)</option>
+                        <option value="2">🔧 ปานกลาง (Intermediate)</option>
+                        <option value="3">🚀 ขั้นสูง (Advanced)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">รายละเอียด</label>
+                    <textarea id="edit_description" name="description" class="form-control" rows="4"></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width:100%;">บันทึกการแก้ไข</button>
@@ -659,43 +258,13 @@ $courses = $stmt->get_result();
     </div>
 
     <script>
-        function openCreateCourseModal() {
-            document.getElementById('createCourseModal').classList.add('show');
-        }
 
-        function closeCreateCourseModal() {
-            document.getElementById('createCourseModal').classList.remove('show');
-            document.getElementById('createCourseForm').reset();
-        }
-
-        function createCourse(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-
-            fetch('../api/teacher_api.php?action=create_course', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('สร้างหลักสูตรสำเร็จ!');
-                        closeCreateCourseModal();
-                        location.reload();
-                    } else {
-                        alert(data.message || 'สร้างหลักสูตรไม่สำเร็จ');
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('เกิดข้อผิดพลาด');
-                });
-        }
-
-        function openEditCourseModal(id, title, desc) {
+        function openEditCourseModal(id, title, description, course_level) {
             document.getElementById('edit_course_id').value = id;
-            document.getElementById('edit_course_title').value = title;
-            document.getElementById('edit_course_desc').value = (desc || '').replace(/`/g, '');
+            document.getElementById('edit_title').value = title;
+            document.getElementById('edit_description').value = description;
+            document.getElementById('edit_course_level').value = course_level || '1';
+            
             document.getElementById('editCourseModal').classList.add('show');
         }
 

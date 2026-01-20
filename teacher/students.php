@@ -122,350 +122,8 @@ $rows = $stmt->get_result();
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Students - CyberLearn</title>
-  <style>
-    *{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f5f7fa;
-      margin: 0;
-    }
-
-    .main-content {
-      margin-left: 280px;
-      padding: 30px;
-      min-height: 100vh;
-    }
-
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-
-    .page-header h1 {
-      margin: 0;
-      font-size: 28px;
-      color: #2d3748;
-    }
-
-    .page-header p {
-      margin: 6px 0 0;
-      color: #718096;
-      font-size: 14px;
-    }
-
-    .actions-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      padding: 10px 14px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 800;
-      font-size: 13px;
-      transition: 0.2s;
-    }
-
-    .btn-primary {
-      background: #f39c12;
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      background: #e67e22;
-    }
-
-    .btn-ghost {
-      background: #fff;
-      color: #2d3748;
-      border: 2px solid #e2e8f0;
-    }
-
-    .btn-ghost:hover {
-      border-color: #f39c12;
-    }
-
-    .btn-danger {
-      background: #e74c3c;
-      color: #fff;
-    }
-
-    .btn-danger:hover {
-      filter: brightness(.95);
-    }
-
-    .btn-secondary {
-      background: #667eea;
-      color: #fff;
-    }
-
-    .btn-secondary:hover {
-      filter: brightness(.95);
-    }
-
-    .btn-sm {
-      padding: 7px 10px;
-      border-radius: 10px;
-      font-size: 12px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin: 18px 0 22px;
-    }
-
-    .stat-card {
-      background: white;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .stat-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .stat-icon {
-      width: 46px;
-      height: 46px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      background: rgba(243, 156, 18, .15);
-    }
-
-    .stat-num {
-      font-size: 26px;
-      font-weight: 900;
-      color: #2d3748;
-      line-height: 1;
-    }
-
-    .stat-label {
-      font-size: 13px;
-      color: #718096;
-      margin-top: 4px;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 18px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, .08);
-      margin-bottom: 18px;
-    }
-
-    .filter-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr 1fr auto;
-      gap: 12px;
-      align-items: end;
-    }
-
-    .filter-grid div input {
-      width: 90%;
-      /* min-width: 200px; */
-    }
-
-    label {
-      display: block;
-      font-size: 12px;
-      color: #718096;
-      margin-bottom: 6px;
-      font-weight: 800;
-    }
-
-    input[type="text"],
-    select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 2px solid #e2e8f0;
-      border-radius: 10px;
-      font-size: 13px;
-      outline: none;
-      background: #fff;
-    }
-
-    input[type="text"]:focus,
-    select:focus {
-      border-color: #f39c12;
-    }
-
-    .table-wrap {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-
-    thead th {
-      text-align: left;
-      font-size: 12px;
-      color: #718096;
-      padding: 12px;
-      border-bottom: 2px solid #e2e8f0;
-      white-space: nowrap;
-    }
-
-    tbody td {
-      padding: 12px;
-      border-bottom: 1px solid #edf2f7;
-      font-size: 13px;
-      color: #2d3748;
-      vertical-align: top;
-    }
-
-    .muted {
-      color: #718096;
-      font-size: 12px;
-    }
-
-    .row-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .student-cell {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #edf2f7;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      flex-shrink: 0;
-      font-weight: 900;
-      color: #2d3748;
-    }
-
-    .avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .tag {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 900;
-      background: #edf2f7;
-      color: #2d3748;
-    }
-
-    .empty {
-      text-align: center;
-      padding: 40px;
-      color: #a0aec0;
-    }
-
-    .empty .icon {
-      font-size: 46px;
-      margin-bottom: 8px;
-    }
-
-    /* modal */
-    .modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, .5);
-      z-index: 10000;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal.show {
-      display: flex;
-    }
-
-    .modal-content {
-      background: #fff;
-      border-radius: 14px;
-      width: min(560px, 92vw);
-      max-height: 82vh;
-      overflow: auto;
-      padding: 22px;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .modal-header h3 {
-      margin: 0;
-      color: #2d3748;
-    }
-
-    .modal-close {
-      font-size: 26px;
-      cursor: pointer;
-      color: #a0aec0;
-    }
-
-    .modal-close:hover {
-      color: #2d3748;
-    }
-
-    .help {
-      font-size: 12px;
-      color: #718096;
-      margin-top: 6px;
-    }
-
-    @media(max-width:1024px) {
-      .filter-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    @media(max-width:768px) {
-      .main-content {
-        margin-left: 0;
-        padding: 20px;
-      }
-
-      .filter-grid {
-        grid-template-columns: 1fr;
-      }
-
-    }
-  </style>
+    <title>Students - CyberLearn</title>
+    <link href="teacher.css" rel="stylesheet">
 </head>
 
 <body>
@@ -475,11 +133,9 @@ $rows = $stmt->get_result();
     <div class="page-header">
       <div>
         <h1>นักเรียน</h1>
-        <p>ดูรายชื่อเด็กในคอร์ส, ค้นหาไว, และเพิ่ม/เอาออกจากคอร์สได้ในหน้าเดียว</p>
       </div>
       <div class="actions-row">
         <button class="btn btn-primary" onclick="openStudentModal()">➕ เพิ่มนักเรียนเข้าคอร์ส</button>
-        <button class="btn btn-ghost" onclick="window.location.href='courses.php'">ไปหน้าหลักสูตร</button>
       </div>
     </div>
 
@@ -542,14 +198,14 @@ $rows = $stmt->get_result();
           <button class="btn btn-primary" type="submit">ค้นหา</button>
         </div>
       </form>
-
-      <div class="help">
-        ทิป: ถ้าอยากดูรายชื่อตามคอร์สแบบชัด ๆ ให้เลือก “หลักสูตร” ก่อน จะไม่ตาลาย
-      </div>
     </div>
 
     <!-- List -->
     <div class="card">
+      <div class="card-header" style="margin-bottom:0; border-bottom:none; padding-bottom:10px;">
+        <h2>รายชื่อนักเรียน</h2>
+        <div class="muted">ทั้งหมด <?= $rows->num_rows ?> คน</div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -603,7 +259,6 @@ $rows = $stmt->get_result();
 
                   <td>
                     <div class="row-actions">
-                      <button class="btn btn-sm btn-secondary" onclick="viewStudent(<?= (int)$r['student_id'] ?>)">ดูโปรไฟล์</button>
                       <button class="btn btn-sm btn-danger"
                         onclick="removeFromCourse(<?= (int)$r['course_id'] ?>, <?= (int)$r['student_id'] ?>)">
                         เอาออกจากคอร์ส
@@ -615,8 +270,8 @@ $rows = $stmt->get_result();
             <?php else: ?>
               <tr>
                 <td colspan="5">
-                  <div class="empty">
-                    <div class="icon">🧑‍🎓</div>
+                  <div class="empty-state">
+                    <div class="empty-state-icon">🧑‍🎓</div>
                     <div>ยังไม่พบรายชื่อที่ตรงกับเงื่อนไข</div>
                   </div>
                 </td>
@@ -662,14 +317,42 @@ $rows = $stmt->get_result();
         <button type="submit" class="btn btn-primary" style="width:100%;">เพิ่มนักเรียน</button>
       </form>
 
-      <div class="help" style="margin-top:10px;">
-        ถ้าอยาก “อัปโหลดรายชื่อเป็นไฟล์” เดี๋ยวพี่ทำโหมด CSV ให้ได้เหมือนกัน (จะโหดขึ้น แต่คุ้ม)
+      <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
+      <div style="margin-bottom:12px;">
+          <h4 style="margin-bottom:10px;">หรือ เพิ่มยกชั้นปี (Bulk Add)</h4>
+          <form id="addStudentLevelForm" onsubmit="addStudentByLevel(event)">
+            <input type="hidden" name="course_id_level" id="course_id_level_input">
+            
+            <div style="display:flex; gap:8px;">
+                <select name="student_level" class="form-control" required style="flex:1;">
+                    <option value="" disabled selected>เลือกระดับชั้นนักเรียน</option>
+                    <option value="ขั้นเริ่มต้น">🌱 ขั้นเริ่มต้น</option>
+                    <option value="ขั้นกลาง">🔧 ขั้นกลาง</option>
+                    <option value="ขั้นสูง">🚀 ขั้นสูง</option>
+                </select>
+                <button type="submit" class="btn btn-secondary" style="white-space:nowrap;">เพิ่มทั้งระดับ</button>
+            </div>
+          </form>
       </div>
+
+
     </div>
   </div>
 
   <script>
     function openStudentModal() {
+      // Sync course selection for bulk form
+      const courseSelect = document.querySelector('#addStudentForm select[name="course_id"]');
+      const levelCourseInput = document.getElementById('course_id_level_input');
+      
+      // Update hidden input when main select changes
+      courseSelect.addEventListener('change', function() {
+          levelCourseInput.value = this.value;
+      });
+      // Init
+      levelCourseInput.value = courseSelect.value;
+      
       document.getElementById('studentModal').classList.add('show');
     }
 
@@ -702,6 +385,42 @@ $rows = $stmt->get_result();
         });
     }
 
+    function addStudentByLevel(e) {
+      e.preventDefault();
+      const courseId = document.getElementById('course_id_level_input').value;
+      const level = e.target.student_level.value;
+
+      if(!courseId) {
+          alert('กรุณาเลือกหลักสูตรด้านบนก่อน');
+          return;
+      }
+
+      if(!confirm(`ยืนยันการเพิ่มนักเรียนระดับ "${level}" ทุกคนเข้าสู่คอร์สนี้?`)) return;
+
+      const formData = new FormData();
+      formData.append('course_id', courseId);
+      formData.append('level', level);
+
+      fetch('../api/teacher_api.php?action=add_students_by_level', {
+          method: 'POST',
+          body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            alert(`เพิ่มนักเรียนจำนวน ${data.added_count} คนเรียบร้อยแล้ว!`);
+            closeStudentModal();
+            location.reload();
+          } else {
+            alert(data.message || 'เพิ่มไม่สำเร็จ');
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('เกิดข้อผิดพลาด');
+        });
+    }
+
     function removeFromCourse(courseId, studentId) {
       if (!confirm('เอานักเรียนออกจากคอร์สนี้แน่ใจนะ?')) return;
 
@@ -726,6 +445,88 @@ $rows = $stmt->get_result();
     function viewStudent(studentId) {
       // ถ้ามีหน้าโปรไฟล์นักเรียนฝั่งครู
       window.location.href = `student_detail.php?id=${studentId}`;
+    }
+
+    // Multi-Select Logic
+    let searchTimeout;
+    function searchCandidates(q) {
+        clearTimeout(searchTimeout);
+        const courseId = document.getElementById('course_id_level_input').value; // Borrow input from bulk add
+        const listDiv = document.getElementById('candidate_list');
+        
+        if (!courseId) {
+            listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:red;">กรุณาเลือกหลักสูตรด้านบนก่อน</div>';
+            return;
+        }
+
+        if (q.length < 2) {
+            listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">พิมพ์รายชื่ออย่างน้อย 2 ตัวอักษร</div>';
+            return;
+        }
+
+        searchTimeout = setTimeout(() => {
+            fetch(`../api/teacher_api.php?action=search_candidates&course_id=${courseId}&q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        renderCandidates(data.students);
+                    }
+                });
+        }, 300);
+    }
+
+    function renderCandidates(students) {
+        const listDiv = document.getElementById('candidate_list');
+        if (students.length === 0) {
+            listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">ไม่พบนักเรียน (หรืออยู่ในคอร์สแล้ว)</div>';
+            return;
+        }
+
+        let html = '';
+        students.forEach(s => {
+            html += `
+                <label style="display:flex; align-items:center; padding:5px; border-bottom:1px solid #f0f0f0; cursor:pointer;">
+                    <input type="checkbox" class="student-select-cb" value="${s.id}" style="margin-right:10px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:13px;">${s.name} (${s.rank || ''})</div>
+                        <div style="font-size:11px; color:#888;">${s.email}</div>
+                    </div>
+                </label>
+            `;
+        });
+        listDiv.innerHTML = html;
+    }
+
+    function addSelectedStudents() {
+        const courseId = document.getElementById('course_id_level_input').value;
+        const checkboxes = document.querySelectorAll('.student-select-cb:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+
+        if (ids.length === 0) {
+            alert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
+            return;
+        }
+
+        if(!confirm(`ยืนยันการเพิ่มนักเรียน ${ids.length} คน?`)) return;
+
+        const formData = new FormData();
+        formData.append('course_id', courseId);
+        ids.forEach(id => formData.append('student_ids[]', id));
+
+        fetch('../api/teacher_api.php?action=add_students_multiselect', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`เพิ่มนักเรียนสำเร็จ ${data.added_count} คน`);
+                closeStudentModal();
+                location.reload();
+            } else {
+                alert(data.message || 'เพิ่มไม่สำเร็จ');
+            }
+        });
     }
 
     window.addEventListener('click', (event) => {

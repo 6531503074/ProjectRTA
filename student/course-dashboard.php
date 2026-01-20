@@ -544,6 +544,9 @@ $announcements = $announcements_stmt->get_result();
             border-radius: 8px;
             margin-bottom: 10px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .chat-message .sender {
@@ -557,6 +560,8 @@ $announcements = $announcements_stmt->get_result();
             color: #4a5568;
             font-size: 13px;
             line-height: 1.5;
+            word-break: break-word;
+            white-space: pre-wrap;
         }
 
         .chat-message .time {
@@ -569,17 +574,23 @@ $announcements = $announcements_stmt->get_result();
             display: flex;
             gap: 10px;
             margin-top: 10px;
+            align-items: flex-end;
         }
 
-        .chat-input-container input {
+        .chat-input-container textarea {
             flex: 1;
             padding: 10px;
             border: 2px solid #e2e8f0;
             border-radius: 6px;
             font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            overflow: hidden;
+            min-height: 44px;
+            max-height: 150px;
         }
 
-        .chat-input-container input:focus {
+        .chat-input-container textarea:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -1090,7 +1101,7 @@ $announcements = $announcements_stmt->get_result();
                                         <span>✅ Submitted: <?= date('M d, Y', strtotime($assignment['submitted_at'])) ?></span>
                                     <?php endif; ?>
                                     <?php if ($is_graded): ?>
-                                        <span class="grade-display">📊 Grade: <?= htmlspecialchars($assignment['grade']) ?></span>
+                                        <!-- <span class="grade-display">📊 Grade: <?= htmlspecialchars($assignment['grade']) ?></span> -->
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -1205,7 +1216,7 @@ $announcements = $announcements_stmt->get_result();
                                     <p>Start a discussion about this assignment</p>
                                 </div>
                                 <div class="chat-input-container">
-                                    <input type="text" placeholder="Type your message..." id="chat-input-<?= $assignment['id'] ?>">
+                                    <textarea placeholder="Type your message..." id="chat-input-<?= $assignment['id'] ?>" rows="1"></textarea>
                                     <button class="btn-primary" onclick="sendAssignmentMessage(<?= $assignment['id'] ?>)">Send</button>
                                 </div>
                             </div>
@@ -1267,9 +1278,9 @@ $announcements = $announcements_stmt->get_result();
                                     <div class="size"><?= round($material['file_size'] / 1024, 2) ?> KB</div>
                                 <?php endif; ?>
                             </div>
-                            <button class="btn-secondary btn-success" onclick="downloadMaterial(<?= $material['id'] ?>)">
+                            <a href="../<?= htmlspecialchars($material['file_path']) ?>" class="btn-secondary btn-success" download target="_blank" style="text-decoration: none; display: flex; align-items: center; gap: 5px;">
                                 📥 Download
-                            </button>
+                            </a>
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
@@ -1412,9 +1423,7 @@ $announcements = $announcements_stmt->get_result();
             document.getElementById('materialsModal').classList.remove('show');
         }
 
-        function downloadMaterial(materialId) {
-            window.location.href = `download_material.php?id=${materialId}`;
-        }
+
 
         // Toggle submission details
         function toggleSubmissionDetails(submissionId) {

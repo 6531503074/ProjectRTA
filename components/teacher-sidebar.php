@@ -186,13 +186,23 @@ $teacher_courses = $courses_stmt->get_result();
         cursor: pointer;
     }
 
-    .course-item:hover {
+    .course-item:visited {
+        color: var(--text-secondary);
+    }
+
+    .course-item:hover, 
+    .course-item:focus, 
+    .course-item:active {
         background: var(--sidebar-hover);
         color: var(--text-primary);
         border-left-color: var(--teacher-accent);
+        outline: none;
     }
 
-    .course-item.active {
+    .course-item.active,
+    .course-item.active:visited,
+    .course-item.active:hover,
+    .course-item.active:focus {
         background: rgba(243, 156, 18, 0.1);
         color: var(--text-primary);
         border-left-color: var(--teacher-accent);
@@ -206,6 +216,7 @@ $teacher_courses = $courses_stmt->get_result();
         font-size: 14px;
         font-weight: 500;
         margin-bottom: 3px;
+        color: var(--text-primary);
     }
 
     .course-meta {
@@ -336,16 +347,13 @@ $teacher_courses = $courses_stmt->get_result();
             </button>
 
             <?php if ($teacher_courses->num_rows > 0): ?>
-                <?php while ($course = $teacher_courses->fetch_assoc()): ?>
-                    <a href="course_detail.php?id=<?= $course['id'] ?>"
-                        class="course-item <?= (isset($_GET['id']) && $_GET['id'] == $course['id']) ? 'active' : '' ?>">
+                <?php while ($sidebar_course = $teacher_courses->fetch_assoc()): ?>
+                    <a href="course_detail.php?id=<?= $sidebar_course['id'] ?>"
+                        class="course-item <?= (isset($_GET['id']) && $_GET['id'] == $sidebar_course['id']) ? 'active' : '' ?>">
                         <div class="course-info">
-                            <div class="course-title"><?= htmlspecialchars($course['title']) ?></div>
+                            <div class="course-title"><?= htmlspecialchars($sidebar_course['title']) ?></div>
                             <div class="course-meta">
-                                👥 <?= $course['student_count'] ?> students
-                                <?php if ($course['recent_announcements'] > 0): ?>
-                                    | 📢 <?= $course['recent_announcements'] ?> new
-                                <?php endif; ?>
+                                👥 <?= $sidebar_course['student_count'] ?> students
                             </div>
                         </div>
                     </a>
@@ -377,6 +385,78 @@ $teacher_courses = $courses_stmt->get_result();
             if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
                 sidebar.classList.remove('active');
             }
+        }
+    });
+</script>
+
+<!-- Create Course Modal (Global) -->
+<div class="modal" id="createCourseModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>สร้างหลักสูตรใหม่</h3>
+            <span class="modal-close" onclick="closeCreateCourseModal()">×</span>
+        </div>
+        <form id="createCourseForm" onsubmit="createCourseGlobal(event)">
+            <div class="form-group">
+                <label>ชื่อหลักสูตร *</label>
+                <input type="text" name="title" required placeholder="ใส่ชื่อหลักสูตร" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>ระดับชั้น <span style="color:red">*</span></label>
+                <select name="course_level" class="form-control" required>
+                    <option value="1">🌱 พื้นฐาน (Basic)</option>
+                    <option value="2">🔧 ปานกลาง (Intermediate)</option>
+                    <option value="3">🚀 ขั้นสูง (Advanced)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>รายละเอียด</label>
+                <textarea name="description" rows="4" placeholder="ใส่รายละเอียดหลักสูตร" class="form-control"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:16px;">สร้างหลักสูตร</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openCreateCourseModal() {
+        document.getElementById('createCourseModal').classList.add('show');
+    }
+
+    function closeCreateCourseModal() {
+        document.getElementById('createCourseModal').classList.remove('show');
+        document.getElementById('createCourseForm').reset();
+    }
+
+    function createCourseGlobal(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        // We assume we are in a subfolder like /teacher/, so API is at ../api/
+        fetch('../api/teacher_api.php?action=create_course', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('สร้างหลักสูตรสำเร็จ!');
+                    closeCreateCourseModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'สร้างหลักสูตรไม่สำเร็จ');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('เกิดข้อผิดพลาด');
+            });
+    }
+    
+    // Close global modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.classList.remove('show');
         }
     });
 </script>

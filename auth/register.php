@@ -609,13 +609,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     
                     <div class="form-group">
                         <label for="courseLevel">Course Level</label>
-                        <input 
-                            type="text" 
-                            id="courseLevel" 
-                            name="courseLevel" 
-                            placeholder="e.g., Intermediate"
-                            value="<?php echo isset($_POST['courseLevel']) ? htmlspecialchars($_POST['courseLevel']) : ''; ?>"
-                        >
+                        <select id="courseLevel" name="courseLevel">
+                            <option value="">-- Select Level --</option>
+                            <option value="1" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '1') ? 'selected' : ''; ?>>ขั้นเริ่มต้น</option>
+                            <option value="2" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '2') ? 'selected' : ''; ?>>ขั้นกลาง</option>
+                            <option value="3" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '3') ? 'selected' : ''; ?>>ขั้นสูง</option>
+                        </select>
                     </div>
                 </div>
                 
