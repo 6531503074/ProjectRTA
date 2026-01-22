@@ -549,6 +549,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- UPDATE USER ROLE ---
+    elseif ($action === 'update_user_role') {
+        $user_id = (int)($_POST['user_id'] ?? 0);
+        $new_role = trim($_POST['new_role'] ?? '');
+
+        if ($user_id <= 0) error('Invalid user ID');
+        if (!in_array($new_role, ['student', 'teacher'])) error('Invalid role');
+
+        // Prevent changing own role
+        if ($user_id === $teacher_id) {
+            error('You cannot change your own role');
+        }
+
+        $stmt = $conn->prepare("UPDATE users SET role = ? WHERE id = ?");
+        $stmt->bind_param("si", $new_role, $user_id);
+
+        if ($stmt->execute()) {
+            success();
+        } else {
+            error('Database error: ' . $stmt->error);
+        }
+    }
+
     else {
         error('Invalid action');
     }

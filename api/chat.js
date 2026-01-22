@@ -15,7 +15,7 @@ class ChatManager {
         try {
             const response = await fetch(`../api/chat_api.php?action=get_groups&course_id=${this.courseId}&filter=${filter}`);
             const data = await response.json();
-            
+
             if (data.success) {
                 this.displayGroups(data.groups, filter);
                 this.currentView = 'list';
@@ -28,16 +28,18 @@ class ChatManager {
     // Display groups
     displayGroups(groups, filter) {
         const content = document.getElementById('chatContent');
-        
+        const isGlobal = !this.courseId; // Global view if no courseId
+
         if (groups.length === 0) {
             content.innerHTML = `
                 <div class="empty-state" style="padding: 60px 20px;">
                     <div class="empty-state-icon">💬</div>
                     <p>${filter === 'my' ? 'You haven\'t joined any groups yet' : 'No group chats yet'}</p>
                 </div>
+                ${!isGlobal ? `
                 <button class="create-group-btn" onclick="chatManager.openCreateGroupModal()">
                     ➕ Create New Group
-                </button>
+                </button>` : ''}
             `;
             return;
         }
@@ -45,9 +47,16 @@ class ChatManager {
         let html = '';
         groups.forEach(group => {
             const isMember = filter === 'my' || group.is_member > 0;
+            const courseTitle = group.course_title ? `<div style="font-size:11px; color:#667eea; margin-bottom:2px;">${this.escapeHtml(group.course_title)}</div>` : '';
+            const unreadBadge = group.unread_count > 0 ? `<span class="unread-badge" style="background:#e74c3c; color:white; border-radius:50%; padding:2px 8px; font-size:12px; margin-left:8px;">${group.unread_count}</span>` : '';
+
             html += `
                 <div class="group-chat-item" onclick="chatManager.openGroup(${group.id})">
-                    <div class="name">${this.escapeHtml(group.name)}</div>
+                    ${courseTitle}
+                    <div class="name">
+                        ${this.escapeHtml(group.name)}
+                        ${unreadBadge}
+                    </div>
                     <div class="members">
                         👥 ${group.member_count} members | 💬 ${group.message_count} messages
                         ${!isMember ? ' | <span style="color: #667eea; font-weight: 600;">Click to join</span>' : ''}
@@ -56,11 +65,13 @@ class ChatManager {
             `;
         });
 
-        html += `
-            <button class="create-group-btn" onclick="chatManager.openCreateGroupModal()">
-                ➕ Create New Group
-            </button>
-        `;
+        if (!isGlobal) {
+            html += `
+                <button class="create-group-btn" onclick="chatManager.openCreateGroupModal()">
+                    ➕ Create New Group
+                </button>
+            `;
+        }
 
         content.innerHTML = html;
     }
@@ -70,7 +81,7 @@ class ChatManager {
         // Check if user is member, if not, join first
         const response = await fetch(`../api/chat_api.php?action=get_messages&group_id=${groupId}`);
         const data = await response.json();
-        
+
         if (!data.success && data.message === 'Not a member') {
             if (confirm('You need to join this group to view messages. Join now?')) {
                 await this.joinGroup(groupId);
@@ -82,16 +93,19 @@ class ChatManager {
         this.currentGroupId = groupId;
         this.lastMessageId = 0;
         this.currentView = 'chat';
-        
+
         // Load group info
         const groupInfo = await this.getGroupInfo(groupId);
-        
+
         // Show chat window
         this.showChatWindow(groupId, groupInfo);
-        
+
+        // Mark as read
+        this.markAsRead(groupId);
+
         // Load messages
         await this.loadMessages();
-        
+
         // Start polling for new messages
         this.startPolling();
     }
@@ -112,7 +126,7 @@ class ChatManager {
         const chatWindow = document.getElementById('chatWindow') || this.createChatWindow();
         document.getElementById('chatWindowTitle').textContent = groupInfo.name || 'Group Chat';
         chatWindow.style.display = 'flex';
-        
+
         // Hide floating chat list
         document.getElementById('floatingChat').classList.remove('show');
     }
@@ -141,7 +155,7 @@ class ChatManager {
             </div>
         `;
         document.body.appendChild(chatWindow);
-        
+
         // Add styles
         if (!document.getElementById('chatWindowStyles')) {
             const style = document.createElement('style');
@@ -408,17 +422,17 @@ class ChatManager {
             `;
             document.head.appendChild(style);
         }
-        
+
         // Create group members modal
         this.createGroupMembersModal();
-        
+
         return chatWindow;
     }
 
     // Create group members modal
     createGroupMembersModal() {
         if (document.getElementById('groupMembersModal')) return;
-        
+
         const modal = document.createElement('div');
         modal.id = 'groupMembersModal';
         modal.className = 'group-members-modal';
@@ -441,7 +455,7 @@ class ChatManager {
             </div>
         `;
         document.body.appendChild(modal);
-        
+
         // Close on outside click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -469,11 +483,11 @@ class ChatManager {
         try {
             const response = await fetch(`../api/chat_api.php?action=get_messages&group_id=${this.currentGroupId}&last_id=${this.lastMessageId}`);
             const data = await response.json();
-            
+
             if (data.success && data.messages.length > 0) {
                 this.displayMessages(data.messages);
                 this.lastMessageId = data.messages[data.messages.length - 1].id;
-                
+
                 // Scroll to bottom only if near bottom or first load
                 const container = document.getElementById('chatMessagesContainer');
                 const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
@@ -489,12 +503,12 @@ class ChatManager {
     // Display messages
     displayMessages(messages) {
         const container = document.getElementById('chatMessagesContainer');
-        
+
         messages.forEach(msg => {
             const isOwn = msg.user_id == this.userId;
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message-item ${isOwn ? 'own' : 'other'}`;
-            
+
             messageDiv.innerHTML = `
                 ${!isOwn ? `<div class="message-sender">${this.escapeHtml(msg.name)}</div>` : ''}
                 <div class="message-bubble">
@@ -502,7 +516,7 @@ class ChatManager {
                     <div class="message-time">${this.formatTime(msg.created_at)}</div>
                 </div>
             `;
-            
+
             container.appendChild(messageDiv);
         });
     }
@@ -511,7 +525,7 @@ class ChatManager {
     async sendMessage() {
         const input = document.getElementById('chatMessageInput');
         const message = input.value.trim();
-        
+
         if (!message || !this.currentGroupId) return;
 
         try {
@@ -523,17 +537,17 @@ class ChatManager {
                     message: message
                 })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 input.value = '';
                 // Update lastMessageId to prevent duplicate when polling
                 this.lastMessageId = data.message.id;
-                
+
                 // Display the message immediately
                 this.displayMessages([data.message]);
-                
+
                 // Scroll to bottom
                 const container = document.getElementById('chatMessagesContainer');
                 container.scrollTop = container.scrollHeight;
@@ -554,7 +568,7 @@ class ChatManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ group_id: groupId })
             });
-            
+
             const data = await response.json();
             return data.success;
         } catch (error) {
@@ -566,25 +580,25 @@ class ChatManager {
     // Leave group
     async leaveGroup() {
         if (!this.currentGroupId) return;
-        
+
         if (!confirm('Are you sure you want to leave this group? You can rejoin anytime.')) {
             return;
         }
-        
+
         try {
             const response = await fetch('../api/chat_api.php?action=leave_group', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ group_id: this.currentGroupId })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 alert('You have left the group');
                 this.closeGroupMembersModal();
                 this.closeChatWindow();
-                
+
                 // Refresh group list
                 const floatingChat = document.getElementById('floatingChat');
                 floatingChat.classList.add('show');
@@ -603,22 +617,86 @@ class ChatManager {
         if (this.pollInterval) {
             clearInterval(this.pollInterval);
         }
-        
+
         this.isPolling = true;
         this.pollInterval = setInterval(() => {
             if (this.currentGroupId && this.isPolling) {
                 this.loadMessages();
+                // Also mark as read if window is focused/open
+                this.markAsRead(this.currentGroupId);
             }
+            // Always poll for global unread count
+            this.updateGlobalUnreadCount();
         }, 2000); // Poll every 2 seconds
+
+        // Initial check
+        this.updateGlobalUnreadCount();
     }
 
     // Stop polling
     stopPolling() {
+        // Don't fully stop, just stop message loading if chat closed, but keep global badge updates?
+        // Actually for simplicity, we'll keep a separate interval for notifications if chat is closed.
+        // But here we rely on one interval.
+        // Let's change this to only clear if we are destroying the manager, but usually we just want to stop message loading.
+        // If chat is closed, we still want badges.
+
         if (this.pollInterval) {
             clearInterval(this.pollInterval);
-            this.pollInterval = null;
         }
+
+        // Start a slower poll for just notifications
+        this.pollInterval = setInterval(() => {
+            this.updateGlobalUnreadCount();
+        }, 5000);
+
         this.isPolling = false;
+        this.currentGroupId = null; // Ensure we don't load messages
+    }
+
+    async markAsRead(groupId) {
+        try {
+            await fetch('../api/chat_api.php?action=mark_read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ group_id: groupId })
+            });
+            // Update counts after marking read
+            // this.updateGlobalUnreadCount(); // Let the poll handle it to avoid spam
+        } catch (error) {
+            console.error('Error marking read:', error);
+        }
+    }
+
+    async updateGlobalUnreadCount() {
+        try {
+            const response = await fetch(`../api/chat_api.php?action=get_unread_count`);
+            const data = await response.json();
+
+            if (data.success) {
+                this.updateFloatingButtonBadge(data.count);
+            }
+        } catch (error) {
+            // silent fail
+        }
+    }
+
+    updateFloatingButtonBadge(count) {
+        const btn = document.querySelector('.floating-chat-btn');
+        if (!btn) return;
+
+        let badge = btn.querySelector('.chat-badge');
+        if (count > 0) {
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'chat-badge';
+                btn.appendChild(badge);
+            }
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'flex';
+        } else {
+            if (badge) badge.style.display = 'none';
+        }
     }
 
     // Close chat window
@@ -631,12 +709,17 @@ class ChatManager {
         this.currentGroupId = null;
         this.lastMessageId = 0;
         this.currentView = 'list';
-        
+
         // Clear messages
         const container = document.getElementById('chatMessagesContainer');
         if (container) {
             container.innerHTML = '';
         }
+
+        // Refresh list to update badges
+        const activeTab = document.querySelector('.chat-tab.active');
+        const filter = activeTab ? (activeTab.textContent.includes('My Groups') ? 'my' : 'all') : 'my';
+        this.loadGroups(filter);
     }
 
     // Open create group modal
@@ -649,24 +732,24 @@ class ChatManager {
     // View group info
     async viewGroupInfo() {
         if (!this.currentGroupId) return;
-        
+
         try {
             const response = await fetch(`../api/chat_api.php?action=get_group_members&group_id=${this.currentGroupId}`);
             const data = await response.json();
-            
+
             if (data.success) {
                 this.displayGroupMembers(data.members);
             }
         } catch (error) {
             console.error('Error loading group info:', error);
-        }    
+        }
     }
 
     // Display group members
     displayGroupMembers(members) {
         const modal = document.getElementById('groupMembersModal');
         const membersList = document.getElementById('groupMembersList');
-        
+
         if (members.length === 0) {
             membersList.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #718096;">
@@ -678,7 +761,7 @@ class ChatManager {
             members.forEach(member => {
                 const initials = member.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
                 const isCreator = member.role === 'creator';
-                
+
                 html += `
                     <div class="member-item">
                         <div class="member-avatar">${initials}</div>
@@ -692,7 +775,7 @@ class ChatManager {
             });
             membersList.innerHTML = html;
         }
-        
+
         modal.classList.add('show');
     }
 
@@ -713,7 +796,7 @@ class ChatManager {
         const date = new Date(timestamp);
         const now = new Date();
         const diff = now - date;
-        
+
         if (diff < 60000) return 'Just now';
         if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
         if (diff < 86400000) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -728,7 +811,7 @@ let chatManager;
 async function createGroup(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
-    
+
     const data = {
         course_id: chatManager.courseId,
         name: formData.get('group_name'),
@@ -741,9 +824,9 @@ async function createGroup(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('Group created successfully!');
             closeCreateGroupModal();
@@ -766,15 +849,15 @@ async function createGroup(e) {
 function toggleFloatingChat() {
     const floatingChat = document.getElementById('floatingChat');
     const chatWindow = document.getElementById('chatWindow');
-    
+
     // Close chat window if open
     if (chatWindow && chatWindow.style.display === 'flex') {
         chatManager.closeChatWindow();
     }
-    
+
     // Toggle floating chat
     const isShowing = floatingChat.classList.toggle('show');
-    
+
     if (isShowing) {
         // Load groups based on active tab
         const activeTab = document.querySelector('.chat-tab.active');
@@ -787,7 +870,7 @@ function toggleFloatingChat() {
 function switchChatTab(tab) {
     document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     chatManager.loadGroups(tab === 'groups' ? 'my' : 'all');
 }
 
@@ -798,12 +881,12 @@ function closeCreateGroupModal() {
 }
 
 // Close floating chat when clicking outside
-document.addEventListener('click', function(event) {
+document.addEventListener('click', function (event) {
     const floatingChat = document.getElementById('floatingChat');
     const floatingBtn = document.querySelector('.floating-chat-btn');
     const chatWindow = document.getElementById('chatWindow');
     const modals = document.querySelectorAll('.modal');
-    
+
     // Don't close if clicking inside modal
     let isClickInsideModal = false;
     modals.forEach(modal => {
@@ -811,12 +894,12 @@ document.addEventListener('click', function(event) {
             isClickInsideModal = true;
         }
     });
-    
+
     if (isClickInsideModal) return;
-    
+
     // Close floating chat if clicking outside
-    if (floatingChat && 
-        !floatingChat.contains(event.target) && 
+    if (floatingChat &&
+        !floatingChat.contains(event.target) &&
         !floatingBtn.contains(event.target) &&
         (!chatWindow || !chatWindow.contains(event.target))) {
         floatingChat.classList.remove('show');

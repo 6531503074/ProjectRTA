@@ -49,6 +49,14 @@ try {
         case 'get_group_members':
             getGroupMembers($conn, $user_id);
             break;
+
+        case 'get_unread_count':
+            getGlobalUnreadCount($conn, $user_id);
+            break;
+
+        case 'mark_read':
+            markRead($conn, $user_id);
+            break;
         
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
@@ -140,6 +148,14 @@ function getMessages($conn, $user_id) {
     echo json_encode(['success' => true, 'messages' => $messages]);
 }
 
+// Helper to check if user is teacher of the course
+function isTeacherOfCourse($conn, $user_id, $course_id) {
+    $stmt = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
+    $stmt->bind_param("ii", $course_id, $user_id);
+    $stmt->execute();
+    return $stmt->get_result()->num_rows > 0;
+}
+
 function createGroup($conn, $user_id) {
     $input = json_decode(file_get_contents('php://input'), true);
     $course_id = isset($input['course_id']) ? intval($input['course_id']) : 0;
@@ -151,13 +167,17 @@ function createGroup($conn, $user_id) {
         return;
     }
     
-    // Check if user is enrolled in course
+    // Check if user is enrolled in course OR is teacher
+    $is_student = false;
     $check_query = "SELECT id FROM course_students WHERE course_id = ? AND student_id = ?";
     $check_stmt = $conn->prepare($check_query);
     $check_stmt->bind_param("ii", $course_id, $user_id);
     $check_stmt->execute();
+    if ($check_stmt->get_result()->num_rows > 0) $is_student = true;
+
+    $is_teacher = isTeacherOfCourse($conn, $user_id, $course_id);
     
-    if ($check_stmt->get_result()->num_rows == 0) {
+    if (!$is_student && !$is_teacher) {
         echo json_encode(['success' => false, 'message' => 'Not enrolled in course']);
         return;
     }
@@ -186,35 +206,78 @@ function getGroups($conn, $user_id) {
     $course_id = isset($_GET['course_id']) ? intval($_GET['course_id']) : 0;
     $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
     
-    if ($course_id <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Invalid course ID']);
-        return;
-    }
+    // Allow teachers to see all groups if course_id is 0
+    // Check if user is teacher (simple check via session usually, but here we query DB or assume caller handles logic)
+    // We'll check if they own ANY courses if course_id is 0
     
-    if ($filter === 'my') {
-        // Get groups user is member of
-        $query = "SELECT g.*, u.name as creator_name,
-                  (SELECT COUNT(*) FROM group_chat_members WHERE group_id = g.id) as member_count,
-                  (SELECT COUNT(*) FROM group_chat_messages WHERE group_id = g.id) as message_count
-                  FROM group_chats g
-                  INNER JOIN users u ON g.created_by = u.id
-                  INNER JOIN group_chat_members m ON g.id = m.group_id
-                  WHERE g.course_id = ? AND m.user_id = ?
-                  ORDER BY g.created_at DESC";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("ii", $course_id, $user_id);
-    } else {
-        // Get all groups for course
-        $query = "SELECT g.*, u.name as creator_name,
+    if ($course_id == 0) {
+        // Global fetch for teacher
+        // Get all groups where the course is owned by this user
+        // OR groups where user is a member (for 'my' filter)
+        
+        if ($filter === 'my') {
+             $query = "SELECT g.*, u.name as creator_name, c.title as course_title,
                   (SELECT COUNT(*) FROM group_chat_members WHERE group_id = g.id) as member_count,
                   (SELECT COUNT(*) FROM group_chat_messages WHERE group_id = g.id) as message_count,
+                  (SELECT COUNT(*) FROM group_chat_messages WHERE group_id = g.id AND id > m.last_read_message_id) as unread_count
+                  FROM group_chats g
+                  INNER JOIN users u ON g.created_by = u.id
+                  INNER JOIN courses c ON g.course_id = c.id
+                  INNER JOIN group_chat_members m ON g.id = m.group_id
+                  WHERE m.user_id = ?
+                  ORDER BY g.created_at DESC";
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("i", $user_id);
+        } else {
+            // All groups in courses taught by this user
+            // Teachers might not have an entry in group_chat_members for all groups, so unread count is complex if they haven't joined.
+            // For now, if they haven't joined, unread count is just total messages? Or 0? Let's say 0 until they join.
+             $query = "SELECT g.*, u.name as creator_name, c.title as course_title,
+                  (SELECT COUNT(*) FROM group_chat_members WHERE group_id = g.id) as member_count,
+                  (SELECT COUNT(*) FROM group_chat_messages WHERE group_id = g.id) as message_count,
+                  COALESCE((SELECT COUNT(*) FROM group_chat_messages gm 
+                            WHERE gm.group_id = g.id AND gm.id > 
+                            (SELECT last_read_message_id FROM group_chat_members WHERE group_id = g.id AND user_id = ?)), 0) as unread_count,
                   (SELECT COUNT(*) FROM group_chat_members WHERE group_id = g.id AND user_id = ?) as is_member
                   FROM group_chats g
                   INNER JOIN users u ON g.created_by = u.id
-                  WHERE g.course_id = ?
+                  INNER JOIN courses c ON g.course_id = c.id
+                  WHERE c.teacher_id = ?
                   ORDER BY g.created_at DESC";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("ii", $user_id, $course_id);
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("iii", $user_id, $user_id, $user_id);
+        }
+    } else {
+        // Specific course access
+        if ($filter === 'my') {
+            // Get groups user is member of
+            $query = "SELECT g.*, u.name as creator_name,
+                      (SELECT COUNT(*) FROM group_chat_members WHERE group_id = g.id) as member_count,
+                      (SELECT COUNT(*) FROM group_chat_messages WHERE group_id = g.id) as message_count,
+                      (SELECT COUNT(*) FROM group_chat_messages WHERE group_id = g.id AND id > m.last_read_message_id) as unread_count
+                      FROM group_chats g
+                      INNER JOIN users u ON g.created_by = u.id
+                      INNER JOIN group_chat_members m ON g.id = m.group_id
+                      WHERE g.course_id = ? AND m.user_id = ?
+                      ORDER BY g.created_at DESC";
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("ii", $course_id, $user_id);
+        } else {
+            // Get all groups for course
+             $query = "SELECT g.*, u.name as creator_name,
+                      (SELECT COUNT(*) FROM group_chat_members WHERE group_id = g.id) as member_count,
+                      (SELECT COUNT(*) FROM group_chat_messages WHERE group_id = g.id) as message_count,
+                      COALESCE((SELECT COUNT(*) FROM group_chat_messages gm 
+                                WHERE gm.group_id = g.id AND gm.id > 
+                                (SELECT last_read_message_id FROM group_chat_members WHERE group_id = g.id AND user_id = ?)), 0) as unread_count,
+                      (SELECT COUNT(*) FROM group_chat_members WHERE group_id = g.id AND user_id = ?) as is_member
+                      FROM group_chats g
+                      INNER JOIN users u ON g.created_by = u.id
+                      WHERE g.course_id = ?
+                      ORDER BY g.created_at DESC";
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("iii", $user_id, $user_id, $course_id);
+        }
     }
     
     $stmt->execute();
@@ -237,16 +300,32 @@ function joinGroup($conn, $user_id) {
         return;
     }
     
-    // Check if group exists and user is enrolled in course
-    $check_query = "SELECT g.id FROM group_chats g
-                    INNER JOIN course_students cs ON g.course_id = cs.course_id
-                    WHERE g.id = ? AND cs.student_id = ?";
+    // Check if group exists and user is enrolled in course OR is teacher
+    $check_query = "SELECT g.id, g.course_id FROM group_chats g
+                    WHERE g.id = ?";
     $check_stmt = $conn->prepare($check_query);
-    $check_stmt->bind_param("ii", $group_id, $user_id);
+    $check_stmt->bind_param("i", $group_id);
     $check_stmt->execute();
+    $res = $check_stmt->get_result();
     
-    if ($check_stmt->get_result()->num_rows == 0) {
-        echo json_encode(['success' => false, 'message' => 'Group not found or access denied']);
+    if ($res->num_rows == 0) {
+        echo json_encode(['success' => false, 'message' => 'Group not found']);
+        return;
+    }
+    
+    $group = $res->fetch_assoc();
+    $course_id = $group['course_id'];
+    
+    $is_student = false;
+    $enroll_check = $conn->prepare("SELECT id FROM course_students WHERE course_id = ? AND student_id = ?");
+    $enroll_check->bind_param("ii", $course_id, $user_id);
+    $enroll_check->execute();
+    if ($enroll_check->get_result()->num_rows > 0) $is_student = true;
+    
+    $is_teacher = isTeacherOfCourse($conn, $user_id, $course_id);
+    
+    if (!$is_student && !$is_teacher) {
+        echo json_encode(['success' => false, 'message' => 'Access denied']);
         return;
     }
     
@@ -356,6 +435,49 @@ function getGroupMembers($conn, $user_id) {
     }
     
     echo json_encode(['success' => true, 'members' => $members]);
+}
+
+
+function getGlobalUnreadCount($conn, $user_id) {
+    // Get total unread messages from all groups user is a member of
+    $query = "SELECT COUNT(*) as total_unread
+              FROM group_chat_messages m
+              INNER JOIN group_chat_members mem ON m.group_id = mem.group_id
+              WHERE mem.user_id = ? AND m.id > mem.last_read_message_id";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    
+    echo json_encode(['success' => true, 'count' => (int)$result['total_unread']]);
+}
+
+function markRead($conn, $user_id) {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $group_id = isset($input['group_id']) ? intval($input['group_id']) : 0;
+    
+    if ($group_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid group ID']);
+        return;
+    }
+    
+    // Get latest message ID in group
+    $latest_query = "SELECT MAX(id) as max_id FROM group_chat_messages WHERE group_id = ?";
+    $latest_stmt = $conn->prepare($latest_query);
+    $latest_stmt->bind_param("i", $group_id);
+    $latest_stmt->execute();
+    $latest_id = $latest_stmt->get_result()->fetch_assoc()['max_id'] ?? 0;
+    
+    // Update last_read_message_id
+    $update_query = "UPDATE group_chat_members SET last_read_message_id = ? WHERE group_id = ? AND user_id = ?";
+    $update_stmt = $conn->prepare($update_query);
+    $update_stmt->bind_param("iii", $latest_id, $group_id, $user_id);
+    
+    if ($update_stmt->execute()) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to mark as read']);
+    }
 }
 
 $conn->close();

@@ -322,6 +322,12 @@ $teacher_courses = $courses_stmt->get_result();
             <a href="dashboard.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'active' : '' ?>">
                 แดชบอร์ด
             </a>
+
+
+            <a href="user_permissions.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'user_permissions.php' ? 'active' : '' ?>">
+                กำหนดสิทธิ์ผู้ใช้
+            </a>
+
         </div>
 
         <div class="nav-section">
@@ -404,9 +410,9 @@ $teacher_courses = $courses_stmt->get_result();
             <div class="form-group">
                 <label>ระดับชั้น <span style="color:red">*</span></label>
                 <select name="course_level" class="form-control" required>
-                    <option value="1">🌱 พื้นฐาน (Basic)</option>
-                    <option value="2">🔧 ปานกลาง (Intermediate)</option>
-                    <option value="3">🚀 ขั้นสูง (Advanced)</option>
+                    <option value="1">🌱 ขั้นเริ่มต้น</option>
+                    <option value="2">🔧 ขั้นกลาง</option>
+                    <option value="3">🚀 ขั้นสูง </option>
                 </select>
             </div>
             <div class="form-group">
@@ -459,4 +465,187 @@ $teacher_courses = $courses_stmt->get_result();
             event.target.classList.remove('show');
         }
     });
+</script>
+
+<!-- Chat Widget -->
+<style>
+    /* Floating Chat Button */
+    .floating-chat-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        z-index: 999;
+    }
+
+    .floating-chat-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Floating Chat Window */
+    .floating-chat-window {
+        position: fixed;
+        bottom: 100px;
+        right: 30px;
+        width: 380px;
+        height: 500px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        display: none;
+        flex-direction: column;
+        z-index: 1000;
+    }
+
+    .floating-chat-window.show {
+        display: flex;
+    }
+
+    .chat-window-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .chat-window-header h3 {
+        font-size: 16px;
+        margin: 0;
+    }
+
+    .chat-window-close {
+        cursor: pointer;
+        font-size: 20px;
+        opacity: 0.8;
+    }
+
+    .chat-window-tabs {
+        display: flex;
+        background: #f7fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .chat-tab {
+        flex: 1;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: #718096;
+        transition: all 0.3s ease;
+    }
+
+    .chat-tab.active {
+        background: white;
+        color: #667eea;
+        border-bottom: 2px solid #667eea;
+    }
+
+    .chat-window-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+    }
+
+    .group-chat-item {
+        background: #f7fafc;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .group-chat-item:hover {
+        background: #edf2f7;
+        transform: translateX(5px);
+    }
+
+    .group-chat-item .name {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 5px;
+    }
+
+    .group-chat-item .members {
+        font-size: 12px;
+        color: #718096;
+    }
+
+    .create-group-btn {
+        width: 100%;
+        padding: 12px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    
+    .empty-state {
+        text-align: center;
+        color: #a0aec0;
+    }
+    
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 10px;
+        opacity: 0.5;
+    }
+</style>
+
+<div class="floating-chat-btn" onclick="toggleFloatingChat()">
+    💬
+</div>
+
+<div class="floating-chat-window" id="floatingChat">
+    <div class="chat-window-header">
+        <h3>Group Chats</h3>
+        <span class="chat-window-close" onclick="toggleFloatingChat()">×</span>
+    </div>
+    <div class="chat-window-tabs">
+        <div class="chat-tab active" onclick="switchChatTab('groups')">My Groups</div>
+        <div class="chat-tab" onclick="switchChatTab('all')">All Groups</div>
+    </div>
+    <div class="chat-window-content" id="chatContent">
+        <!-- Groups will be loaded here -->
+    </div>
+</div>
+
+<!-- Placeholder for create modal which is required by JS but hidden in global view -->
+<div id="createGroupModal" class="modal" style="display:none;"></div>
+
+<script src="../api/chat.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize with courseId = 0 (Global/Teacher View)
+        if (typeof ChatManager !== 'undefined') {
+            chatManager = new ChatManager(0, <?= (int)$_SESSION['user']['id'] ?>);
+        }
+    });
+
+    // Make toggleFloatingChat global if needed, though chat.js defines it too.
+    // However, chat.js implementation relies on `chatManager` being global.
+    // Re-implementing simplified toggle if chat.js one has issues or to ensure it works.
+    // Actually chat.js defines it. We should use that.
+    
+    // But we need to ensure chat.js is loaded.
 </script>
