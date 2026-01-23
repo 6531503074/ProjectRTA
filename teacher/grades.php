@@ -185,7 +185,7 @@ $submissions = $stmt->get_result();
     <div class="main-content">
         <div class="page-header">
             <div>
-                <h1>เกรด</h1>
+                <h1>คะแนน</h1>
             </div>
             <div class="actions-row">
                 <button class="btn btn-secondary" onclick="location.reload()">รีเฟรช</button>
@@ -198,14 +198,14 @@ $submissions = $stmt->get_result();
                 <div class="stat-icon">📌</div>
                 <div>
                     <div class="stat-num"><?= (int)$stats['pending_total'] ?></div>
-                    <div class="stat-label">รอให้เกรด</div>
+                    <div class="stat-label">รอให้คะแนน</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">✅</div>
                 <div>
                     <div class="stat-num"><?= (int)$stats['graded_total'] ?></div>
-                    <div class="stat-label">ให้เกรดแล้ว</div>
+                    <div class="stat-label">ให้คะแนนแล้ว</div>
                 </div>
             </div>
             <div class="stat-card">
@@ -253,8 +253,8 @@ $submissions = $stmt->get_result();
                 <div>
                     <label>สถานะ</label>
                     <select name="status">
-                        <option value="pending" <?= $status === 'pending' ? 'selected' : '' ?>>รอให้เกรด</option>
-                        <option value="graded" <?= $status === 'graded' ? 'selected' : '' ?>>ให้เกรดแล้ว</option>
+                        <option value="pending" <?= $status === 'pending' ? 'selected' : '' ?>>รอให้คะแนน</option>
+                        <option value="graded" <?= $status === 'graded' ? 'selected' : '' ?>>ให้คะแนนแล้ว</option>
                         <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
                     </select>
                 </div>
@@ -284,7 +284,7 @@ $submissions = $stmt->get_result();
                             <th>หลักสูตร</th>
                             <th>เวลาส่ง</th>
                             <th>สถานะ</th>
-                            <th>ให้เกรด</th>
+                            <th>ให้คะแนน</th>
                         </tr>
                     </thead>
 
@@ -322,7 +322,7 @@ $submissions = $stmt->get_result();
 
                                     <td>
                                         <span class="tag <?= h($statusTag) ?>">
-                                            <?= $isGraded ? 'ให้เกรดแล้ว' : 'รอให้เกรด' ?>
+                                            <?= $isGraded ? 'ให้คะแนนแล้ว' : 'รอให้คะแนน' ?>
                                         </span>
                                         <?php if ($isGraded): ?>
                                             <div class="muted" style="margin-top:6px;">คะแนน: <?= h($s['grade']) ?></div>

@@ -148,7 +148,7 @@ $courses = $stmt->get_result();
                 <div class="stat-icon">📌</div>
                 <div>
                     <div class="stat-num"><?= (int)$stats['pending_grades'] ?></div>
-                    <div class="stat-label">รอให้เกรด</div>
+                    <div class="stat-label">รอให้คะแนน</div>
                 </div>
             </div>
         </div>

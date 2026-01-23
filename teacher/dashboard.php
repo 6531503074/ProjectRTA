@@ -145,7 +145,7 @@ $upcoming_assignments = $upcoming_assignments_stmt->get_result();
             </div>
             <div class="quick-action-btn" onclick="window.location.href='grades.php'">
                 <div class="icon">📊</div>
-                <div class="label">จัดการเกรด</div>
+                <div class="label">จัดการคะแนน</div>
             </div>
         </div>
 
@@ -213,12 +213,12 @@ $upcoming_assignments = $upcoming_assignments_stmt->get_result();
                             <?php if (!$submission['grade']): ?>
                                 <div class="actions">
                                     <button class="btn btn-primary" onclick="gradeSubmission(<?= $submission['id'] ?>)">
-                                        ให้เกรด
+                                        ให้คะแนน
                                     </button>
                                 </div>
                             <?php else: ?>
                                 <div style="margin-top: 8px; color: #2ecc71; font-size: 12px; font-weight: 600;">
-                                    ✓ ได้รับเกรดแล้ว: <?= htmlspecialchars($submission['grade']) ?>
+                                    ✓ ได้รับคะแนนแล้ว: <?= htmlspecialchars($submission['grade']) ?>
                                 </div>
                             <?php endif; ?>
                         </div>

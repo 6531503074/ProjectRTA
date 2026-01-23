@@ -166,8 +166,8 @@ while ($row = $students_result->fetch_assoc()) {
                             <th>สถานะ</th>
                             <th>วันที่ส่ง</th>
                             <th>ไฟล์แนบ</th>
-                            <th>เกรด</th>
-                            <th>จัดการ</th>
+                            <th>คะแนน</th>
+
                         </tr>
                     </thead>
                     <tbody>
@@ -204,7 +204,7 @@ while ($row = $students_result->fetch_assoc()) {
                                 </td>
                                 <td>
                                     <?php if ($std['file_path']): ?>
-                                        <a href="../uploads/assignments/<?= h($std['file_path']) ?>" target="_blank" class="btn-ghost" style="padding: 4px 8px; font-size: 12px;">
+                                        <a href="../<?= h($std['file_path']) ?>" target="_blank" class="btn-ghost" style="padding: 4px 8px; font-size: 12px;">
                                             📂 ดูไฟล์
                                         </a>
                                     <?php else: ?>
@@ -213,20 +213,9 @@ while ($row = $students_result->fetch_assoc()) {
                                 </td>
                                 <td>
                                     <?php if ($std['grade'] !== null): ?>
-                                        <span style="font-weight:bold; color:var(--success);"><?= $std['grade'] ?>/100</span>
+                                        <span style="font-weight:bold; color:var(--success);"><?= $std['grade'] ?></span>
                                     <?php else: ?>
                                         <span style="color:var(--gray);">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($std['submission_id']): ?>
-                                        <button class="btn btn-sm btn-primary" onclick="window.location.href='grade_submission.php?id=<?= $std['submission_id'] ?>'">
-                                            📝 ตรวจงาน
-                                        </button>
-                                    <?php else: ?>
-                                        <button class="btn btn-sm btn-secondary" disabled style="opacity:0.5; cursor:not-allowed;">
-                                            รอส่ง
-                                        </button>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -234,7 +223,7 @@ while ($row = $students_result->fetch_assoc()) {
                         
                         <?php if (empty($students_data)): ?>
                             <tr>
-                                <td colspan="6" style="text-align:center; padding: 30px; color:var(--gray);">
+                                <td colspan="5" style="text-align:center; padding: 30px; color:var(--gray);">
                                     ยังไม่มีนักเรียนในวิชานี้
                                 </td>
                             </tr>

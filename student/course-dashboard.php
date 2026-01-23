@@ -80,6 +80,28 @@ $announcements_stmt = $conn->prepare($announcements_query);
 $announcements_stmt->bind_param("i", $course_id);
 $announcements_stmt->execute();
 $announcements = $announcements_stmt->get_result();
+// Thai Date Helper
+function th_dt($datetime) {
+    if (!$datetime) return '-';
+    $timestamp = strtotime($datetime);
+    $months_th = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    $day = date('j', $timestamp);
+    $month = $months_th[(int)date('n', $timestamp)];
+    $year = (int)date('Y', $timestamp) + 543;
+    $time = date('H:i', $timestamp);
+    return "$day $month $year $time น.";
+}
+
+function th_date($date) {
+    if (!$date) return '-';
+    $timestamp = strtotime($date);
+    $months_th = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    $day = date('j', $timestamp);
+    $month = $months_th[(int)date('n', $timestamp)];
+    $year = (int)date('Y', $timestamp) + 543;
+    return "$day $month $year";
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -1042,7 +1064,7 @@ $announcements = $announcements_stmt->get_result();
             <h1><?= htmlspecialchars($course['title']) ?></h1>
             <div class="teacher">
                 <span>👨‍🏫</span>
-                <span>Instructor: <?= htmlspecialchars($course['teacher_name'] ?? 'Not assigned') ?></span>
+                <span>ผู้สอน: <?= htmlspecialchars($course['teacher_name'] ?? 'ไม่ได้ระบุ') ?></span>
             </div>
             <?php if ($course['description']): ?>
                 <div class="description"><?= htmlspecialchars($course['description']) ?></div>
@@ -1053,13 +1075,13 @@ $announcements = $announcements_stmt->get_result();
             <!-- Course Materials Section -->
             <div class="materials-section">
                 <div class="section-header">
-                    <h2>📚 Course Materials</h2>
+                    <h2>📚 เอกสารประกอบการเรียน</h2>
                     <button class="btn-primary" onclick="openMaterialsModal()">
-                        📥 Download Materials
+                        📥 ดาวน์โหลดเอกสาร
                     </button>
                 </div>
                 <p style="color: #718096; font-size: 14px;">
-                    Access all course materials, lecture notes, and resources here.
+                    เข้าถึงเอกสารประกอบการเรียน บันทึกการบรรยาย และแหล่งข้อมูลทั้งหมดที่นี่
                 </p>
             </div>
 
@@ -1067,12 +1089,12 @@ $announcements = $announcements_stmt->get_result();
             <?php if ($announcements->num_rows > 0): ?>
                 <div class="materials-section">
                     <div class="section-header">
-                        <h2>📢 Announcements</h2>
+                        <h2>📢 ประกาศ</h2>
                     </div>
                     <?php while ($announcement = $announcements->fetch_assoc()): ?>
                         <div class="announcement-card">
                             <div class="content"><?= nl2br(htmlspecialchars($announcement['content'])) ?></div>
-                            <div class="time"><?= date('M d, Y - g:i A', strtotime($announcement['created_at'])) ?></div>
+                            <div class="time"><?= th_dt($announcement['created_at']) ?></div>
                         </div>
                     <?php endwhile; ?>
                 </div>
@@ -1080,7 +1102,7 @@ $announcements = $announcements_stmt->get_result();
 
             <!-- Assignments Section -->
             <div class="section-header" style="margin-top: 20px;">
-                <h2>📝 Assignments</h2>
+                <h2>📝 งานที่ได้รับมอบหมาย</h2>
             </div>
 
             <?php if ($assignments->num_rows > 0): ?>
@@ -1096,9 +1118,9 @@ $announcements = $announcements_stmt->get_result();
                             <div style="flex: 1;">
                                 <h3 class="assignment-title"><?= htmlspecialchars($assignment['title']) ?></h3>
                                 <div class="assignment-meta">
-                                    <span>📅 Due: <?= date('M d, Y \a\t g:i A', strtotime($assignment['due_date'])) ?></span>
+                                    <span>📅 กำหนดส่ง: <?= th_dt($assignment['due_date']) ?></span>
                                     <?php if ($is_submitted): ?>
-                                        <span>✅ Submitted: <?= date('M d, Y', strtotime($assignment['submitted_at'])) ?></span>
+                                        <span>✅ ส่งเมื่อ: <?= th_date($assignment['submitted_at']) ?></span>
                                     <?php endif; ?>
                                     <?php if ($is_graded): ?>
                                         <!-- <span class="grade-display">📊 Grade: <?= htmlspecialchars($assignment['grade']) ?></span> -->
@@ -1106,7 +1128,7 @@ $announcements = $announcements_stmt->get_result();
                                 </div>
                             </div>
                             <span class="status-badge <?= $is_graded ? 'status-graded' : ($is_submitted ? 'status-submitted' : ($is_overdue ? 'status-overdue' : 'status-pending')) ?>">
-                                <?= $is_graded ? '✓ Graded' : ($is_submitted ? '✓ Submitted' : ($is_overdue ? '⚠ Overdue' : '⏳ Pending')) ?>
+                                <?= $is_graded ? '✓ ให้คะแนนแล้ว' : ($is_submitted ? '✓ ส่งแล้ว' : ($is_overdue ? '⚠ เลยกำหนดส่ง' : '⏳ รอส่ง')) ?>
                             </span>
                         </div>
 
@@ -1120,9 +1142,9 @@ $announcements = $announcements_stmt->get_result();
                         <?php if ($is_submitted): ?>
                             <div class="submission-details">
                                 <div class="submission-details-header">
-                                    <h4>📋 Your Submission</h4>
+                                    <h4>📋 งานที่ส่ง</h4>
                                     <span class="submission-toggle" onclick="toggleSubmissionDetails(<?= $assignment['submission_id'] ?>)">
-                                        <span id="toggle-text-<?= $assignment['submission_id'] ?>">Hide</span>
+                                        <span id="toggle-text-<?= $assignment['submission_id'] ?>">ซ่อน</span>
                                         <span id="toggle-icon-<?= $assignment['submission_id'] ?>">▲</span>
                                     </span>
                                 </div>
@@ -1130,7 +1152,7 @@ $announcements = $announcements_stmt->get_result();
                                 <div id="submission-details-<?= $assignment['submission_id'] ?>" class="submission-expanded">
                                     <?php if ($assignment['submission_text']): ?>
                                         <div class="submission-content">
-                                            <div class="submission-label">Submission Text:</div>
+                                            <div class="submission-label">ข้อความที่ส่ง:</div>
                                             <div class="submission-text"><?= nl2br(htmlspecialchars($assignment['submission_text'])) ?></div>
                                         </div>
                                     <?php endif; ?>
@@ -1151,14 +1173,14 @@ $announcements = $announcements_stmt->get_result();
                                                 </div>
                                             </div>
                                             <a href="../<?= htmlspecialchars($assignment['file_path']) ?>" target="_blank" download>
-                                                📥 Download
+                                                📥 ดาวน์โหลด
                                             </a>
                                         </div>
                                     <?php endif; ?>
 
                                     <div class="submission-meta">
                                         <span>🕒</span>
-                                        <span>Submitted on <?= date('F d, Y \a\t g:i A', strtotime($assignment['submitted_at'])) ?></span>
+                                        <span>ส่งเมื่อ <?= th_dt($assignment['submitted_at']) ?></span>
                                     </div>
                                 </div>
                             </div>
@@ -1168,7 +1190,7 @@ $announcements = $announcements_stmt->get_result();
                             <div class="feedback-section">
                                 <div class="feedback-header">
                                     <span>💬</span>
-                                    <strong>Teacher Feedback</strong>
+                                    <strong>ข้อเสนอแนะจากผู้สอน</strong>
                                 </div>
                                 <div class="feedback-content">
                                     <?= nl2br(htmlspecialchars($assignment['feedback'])) ?>
@@ -1179,45 +1201,45 @@ $announcements = $announcements_stmt->get_result();
                         <div class="assignment-actions">
                             <?php if (!$is_submitted): ?>
                                 <button class="btn-primary" onclick="openSubmissionModal(<?= $assignment['id'] ?>, '<?= htmlspecialchars(addslashes($assignment['title'])) ?>')">
-                                    📤 Submit Work
+                                    📤 ส่งงาน
                                 </button>
                             <?php else: ?>
                                 <?php if (!$is_graded): ?>
                                     <!-- Edit Submission Button (only if not graded) -->
                                     <button class="btn-secondary btn-warning" onclick="editSubmission(<?= $assignment['id'] ?>, <?= $assignment['submission_id'] ?>, '<?= htmlspecialchars(addslashes($assignment['title'])) ?>')">
-                                        ✏️ Edit Submission
+                                        ✏️ แก้ไขการส่ง
                                     </button>
 
                                     <!-- Cancel Submission Button (only if not graded) -->
                                     <button class="btn-secondary btn-danger" onclick="confirmCancelSubmission(<?= $assignment['submission_id'] ?>, <?= $assignment['id'] ?>)">
-                                        ❌ Cancel Submission
+                                        ❌ ยกเลิกการส่ง
                                     </button>
                                 <?php else: ?>
                                     <button class="btn-secondary btn-success" disabled style="opacity: 0.7;">
-                                        ✓ Graded
+                                        ✓ ให้คะแนนแล้ว
                                     </button>
                                 <?php endif; ?>
                             <?php endif; ?>
                             <button class="btn-secondary btn-warning" onclick="openTestModal(<?= $assignment['id'] ?>, 'pre')">
-                                📋 Pre-Test
+                                📋 แบบทดสอบก่อนเรียน
                             </button>
 
                             <button class="btn-secondary btn-warning" onclick="openTestModal(<?= $assignment['id'] ?>, 'post')">
-                                📋 Post-Test
+                                📋 แบบทดสอบหลังเรียน
                             </button>
                         </div>
                         <!-- Assignment Chat -->
                         <div class="assignment-chat">
                             <div class="chat-toggle" onclick="toggleAssignmentChat(<?= $assignment['id'] ?>)">
-                                💬 Assignment Discussion (<?= $assignment['chat_count'] ?> messages)
+                                💬 สนทนาเกี่ยวกับงาน (<?= $assignment['chat_count'] ?> ข้อความ)
                             </div>
                             <div class="chat-messages" id="chat-<?= $assignment['id'] ?>">
                                 <div class="empty-state" style="padding: 20px;">
-                                    <p>Start a discussion about this assignment</p>
+                                    <p>เริ่มการสนทนาเกี่ยวกับงานนี้</p>
                                 </div>
                                 <div class="chat-input-container">
-                                    <textarea placeholder="Type your message..." id="chat-input-<?= $assignment['id'] ?>" rows="1"></textarea>
-                                    <button class="btn-primary" onclick="sendAssignmentMessage(<?= $assignment['id'] ?>)">Send</button>
+                                    <textarea placeholder="พิมพ์ข้อความ..." id="chat-input-<?= $assignment['id'] ?>" rows="1"></textarea>
+                                    <button class="btn-primary" onclick="sendAssignmentMessage(<?= $assignment['id'] ?>)">ส่ง</button>
                                 </div>
                             </div>
                         </div>
@@ -1226,7 +1248,7 @@ $announcements = $announcements_stmt->get_result();
             <?php else: ?>
                 <div class="empty-state">
                     <div class="empty-state-icon">📝</div>
-                    <p>No assignments yet</p>
+                    <p>ยังไม่มีงานที่ได้รับมอบหมาย</p>
                 </div>
             <?php endif; ?>
         </div>
@@ -1241,22 +1263,22 @@ $announcements = $announcements_stmt->get_result();
     <!-- Floating Chat Window -->
     <div class="floating-chat-window" id="floatingChat">
         <div class="chat-window-header">
-            <h3>Group Chats</h3>
+            <h3>แชทกลุ่ม</h3>
             <span class="chat-window-close" onclick="toggleFloatingChat()">×</span>
         </div>
 
         <div class="chat-window-tabs">
-            <div class="chat-tab active" onclick="switchChatTab('groups')">My Groups</div>
-            <div class="chat-tab" onclick="switchChatTab('all')">All Groups</div>
+            <div class="chat-tab active" onclick="switchChatTab('groups')">กลุ่มของฉัน</div>
+            <div class="chat-tab" onclick="switchChatTab('all')">กลุ่มทั้งหมด</div>
         </div>
 
         <div class="chat-window-content" id="chatContent">
             <div class="empty-state" style="padding: 60px 20px;">
                 <div class="empty-state-icon">💬</div>
-                <p>No group chats yet</p>
+                <p>ยังไม่มีแชทกลุ่ม</p>
             </div>
             <button class="create-group-btn" onclick="chatManager.openCreateGroupModal()">
-                ➕ Create New Group
+                ➕ สร้างกลุ่มใหม่
             </button>
         </div>
     </div>
@@ -1265,7 +1287,7 @@ $announcements = $announcements_stmt->get_result();
     <div class="modal" id="materialsModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Course Materials</h3>
+                <h3>เอกสารประกอบการเรียน</h3>
                 <span class="modal-close" onclick="closeMaterialsModal()">×</span>
             </div>
             <div id="materialsContent">
@@ -1279,14 +1301,14 @@ $announcements = $announcements_stmt->get_result();
                                 <?php endif; ?>
                             </div>
                             <a href="../<?= htmlspecialchars($material['file_path']) ?>" class="btn-secondary btn-success" download target="_blank" style="text-decoration: none; display: flex; align-items: center; gap: 5px;">
-                                📥 Download
+                                📥 ดาวน์โหลด
                             </a>
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
                     <div class="empty-state">
                         <div class="empty-state-icon">📚</div>
-                        <p>No materials available yet</p>
+                        <p>ยังไม่มีเอกสารในขณะนี้</p>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1297,7 +1319,7 @@ $announcements = $announcements_stmt->get_result();
     <div class="modal" id="submissionModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="submissionModalTitle">Submit Assignment</h3>
+                <h3 id="submissionModalTitle">ส่งงาน</h3>
                 <span class="modal-close" onclick="closeSubmissionModal()">×</span>
             </div>
             <form id="submissionForm" onsubmit="submitAssignment(event)">
@@ -1306,34 +1328,34 @@ $announcements = $announcements_stmt->get_result();
                 <input type="hidden" id="isEdit" name="is_edit" value="0">
 
                 <div class="form-group">
-                    <label for="submissionText">Submission Text</label>
+                    <label for="submissionText">รายละเอียดการส่ง</label>
                     <textarea
                         id="submissionText"
                         name="submission_text"
                         rows="8"
-                        placeholder="Enter your submission text, paste a link, or describe your work..."></textarea>
+                        placeholder="พิมพ์รายละเอียดการส่งงาน แปะลิงก์ หรืออธิบายงานของคุณ..."></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label for="submissionFile">Attach File (Optional)</label>
+                    <label for="submissionFile">แนบไฟล์ (ไม่บังคับ)</label>
                     <input
                         type="file"
                         id="submissionFile"
                         name="submission_file"
                         accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.ppt,.pptx,.xls,.xlsx">
                     <div id="currentFileDisplay" class="current-file-display" style="display: none;">
-                        <span style="color: #718096;">📎 Current file: </span>
+                        <span style="color: #718096;">📎 ไฟล์ปัจจุบัน: </span>
                         <a id="currentFileLink" href="#" target="_blank">
                             <span id="currentFileName"></span>
                         </a>
                         <div style="font-size: 11px; color: #a0aec0; margin-top: 5px;">
-                            💡 Upload a new file to replace it, or leave empty to keep current file
+                            💡 อัปโหลดไฟล์ใหม่เพื่อแทนที่ หรือเว้นว่างไว้เพื่อใช้ไฟล์เดิม
                         </div>
                     </div>
                 </div>
 
                 <button type="submit" class="btn-primary" style="width: 100%;" id="submitButton">
-                    <span id="submitButtonText">Submit Assignment</span>
+                    <span id="submitButtonText">ส่งงาน</span>
                 </button>
             </form>
         </div>
@@ -1344,14 +1366,14 @@ $announcements = $announcements_stmt->get_result();
         <div class="confirm-dialog">
             <div class="confirm-dialog-icon">⚠️</div>
             <div class="confirm-dialog-message" id="confirmMessage">
-                Are you sure you want to cancel this submission? This action cannot be undone.
+                คุณแน่ใจหรือไม่ที่จะยกเลิกการส่งงานนี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้
             </div>
             <div class="confirm-dialog-actions">
                 <button class="btn-secondary" onclick="closeConfirmModal()">
-                    Cancel
+                    ยกเลิก
                 </button>
                 <button class="btn-danger" id="confirmButton">
-                    Yes, Delete
+                    ใช่, ลบ
                 </button>
             </div>
         </div>
@@ -1362,13 +1384,13 @@ $announcements = $announcements_stmt->get_result();
     <div class="modal" id="testModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="testModalTitle">Test</h3>
+                <h3 id="testModalTitle">แบบทดสอบ</h3>
                 <span class="modal-close" onclick="closeTestModal()">×</span>
             </div>
             <div id="testContent">
-                <p style="color: #718096; margin-bottom: 20px;">This test contains questions related to the assignment.</p>
+                <p style="color: #718096; margin-bottom: 20px;">แบบทดสอบนี้ประกอบด้วยคำถามที่เกี่ยวข้องกับงาน</p>
                 <button class="btn-primary" style="width: 100%;" onclick="startTest()">
-                    Start Test
+                    เริ่มทำแบบทดสอบ
                 </button>
             </div>
         </div>
@@ -1378,29 +1400,29 @@ $announcements = $announcements_stmt->get_result();
     <div class="modal" id="createGroupModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Create Group Chat</h3>
+                <h3>สร้างแชทกลุ่ม</h3>
                 <span class="modal-close" onclick="closeCreateGroupModal()">×</span>
             </div>
             <form id="createGroupForm" onsubmit="createGroup(event)">
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Group Name</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">ชื่อกลุ่ม</label>
                     <input
                         type="text"
                         name="group_name"
                         required
                         style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
-                        placeholder="Enter group name...">
+                        placeholder="ระบุชื่อกลุ่ม...">
                 </div>
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Description</label>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">รายละเอียด</label>
                     <textarea
                         name="group_description"
                         rows="3"
                         style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
-                        placeholder="Group description..."></textarea>
+                        placeholder="รายละเอียดกลุ่ม..."></textarea>
                 </div>
                 <button type="submit" class="btn-primary" style="width: 100%;">
-                    Create Group
+                    สร้างกลุ่ม
                 </button>
             </form>
         </div>
@@ -1434,12 +1456,12 @@ $announcements = $announcements_stmt->get_result();
             if (details.classList.contains('submission-expanded')) {
                 details.classList.remove('submission-expanded');
                 details.classList.add('submission-collapsed');
-                toggleText.textContent = 'Show';
+                toggleText.textContent = 'แสดง';
                 toggleIcon.textContent = '▼';
             } else {
                 details.classList.remove('submission-collapsed');
                 details.classList.add('submission-expanded');
-                toggleText.textContent = 'Hide';
+                toggleText.textContent = 'ซ่อน';
                 toggleIcon.textContent = '▲';
             }
         }
@@ -1449,8 +1471,8 @@ $announcements = $announcements_stmt->get_result();
             document.getElementById('assignmentId').value = assignmentId;
             document.getElementById('submissionId').value = '';
             document.getElementById('isEdit').value = '0';
-            document.getElementById('submissionModalTitle').textContent = `📤 Submit: ${title}`;
-            document.getElementById('submitButtonText').textContent = 'Submit Assignment';
+            document.getElementById('submissionModalTitle').textContent = `📤 ส่งงาน: ${title}`;
+            document.getElementById('submitButtonText').textContent = 'ส่งงาน';
             document.getElementById('submissionText').value = '';
             document.getElementById('submissionFile').value = '';
             document.getElementById('currentFileDisplay').style.display = 'none';
@@ -1476,8 +1498,8 @@ $announcements = $announcements_stmt->get_result();
                     document.getElementById('assignmentId').value = assignmentId;
                     document.getElementById('submissionId').value = submissionId;
                     document.getElementById('isEdit').value = '1';
-                    document.getElementById('submissionModalTitle').textContent = `✏️ Edit: ${title}`;
-                    document.getElementById('submitButtonText').textContent = 'Update Submission';
+                    document.getElementById('submissionModalTitle').textContent = `✏️ แก้ไข: ${title}`;
+                    document.getElementById('submitButtonText').textContent = 'อัปเดตการส่งงาน';
                     document.getElementById('submissionText').value = sub.submission_text || '';
 
                     // Show current file if exists
@@ -1491,11 +1513,11 @@ $announcements = $announcements_stmt->get_result();
 
                     document.getElementById('submissionModal').classList.add('show');
                 } else {
-                    alert('❌ ' + (data.message || 'Failed to load submission data'));
+                    alert('❌ ' + (data.message || 'ไม่สามารถโหลดข้อมูลการส่งงานได้'));
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('❌ An error occurred while loading submission data');
+                alert('❌ เกิดข้อผิดพลาดขณะโหลดข้อมูลการส่งงาน');
             }
         }
 
@@ -1508,7 +1530,7 @@ $announcements = $announcements_stmt->get_result();
 
             // Show loading state
             submitButton.disabled = true;
-            document.getElementById('submitButtonText').innerHTML = '<span class="spinner"></span> Processing...';
+            document.getElementById('submitButtonText').innerHTML = '<span class="spinner"></span> กำลังประมวลผล...';
 
             const formData = new FormData(e.target);
 
@@ -1525,11 +1547,11 @@ $announcements = $announcements_stmt->get_result();
                     closeSubmissionModal();
                     location.reload();
                 } else {
-                    alert('❌ ' + (data.message || 'Operation failed'));
+                    alert('❌ ' + (data.message || 'การดำเนินการล้มเหลว'));
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('❌ An error occurred. Please try again.');
+                alert('❌ เกิดข้อผิดพลาด โปรดลองใหม่อีกครั้ง');
             } finally {
                 submitButton.disabled = false;
                 document.getElementById('submitButtonText').textContent = originalText;
@@ -1539,7 +1561,7 @@ $announcements = $announcements_stmt->get_result();
         // Confirm Cancel Submission
         function confirmCancelSubmission(submissionId, assignmentId) {
             document.getElementById('confirmMessage').textContent =
-                'Are you sure you want to cancel this submission? This action cannot be undone and all your work will be deleted.';
+                'คุณแน่ใจหรือไม่ที่จะยกเลิกการส่งงานนี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้ และงานของคุณจะถูกลบทั้งหมด';
             document.getElementById('confirmButton').onclick = () => cancelSubmission(submissionId);
             document.getElementById('confirmModal').classList.add('show');
         }
@@ -1567,17 +1589,17 @@ $announcements = $announcements_stmt->get_result();
                     alert('✅ ' + data.message);
                     location.reload();
                 } else {
-                    alert('❌ ' + (data.message || 'Failed to cancel submission'));
+                    alert('❌ ' + (data.message || 'ยกเลิกการส่งงานล้มเหลว'));
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('❌ An error occurred. Please try again.');
+                alert('❌ เกิดข้อผิดพลาด โปรดลองใหม่อีกครั้ง');
             }
         }
 
         // Test Modal
         function openTestModal(assignmentId, testType) {
-            const title = testType === 'pre' ? 'Pre-Test' : 'Post-Test';
+            const title = testType === 'pre' ? 'แบบทดสอบก่อนเรียน' : 'แบบทดสอบหลังเรียน';
             document.getElementById('testModalTitle').textContent = title;
             document.getElementById('testModal').classList.add('show');
         }
@@ -1587,7 +1609,7 @@ $announcements = $announcements_stmt->get_result();
         }
 
         function startTest() {
-            alert('Test functionality will be implemented');
+            alert('ระบบแบบทดสอบจะเปิดใช้งานในเร็วๆ นี้');
             closeTestModal();
         }
 
