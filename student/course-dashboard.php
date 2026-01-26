@@ -74,6 +74,13 @@ $assignments_stmt->bind_param("ii", $student_id, $course_id);
 $assignments_stmt->execute();
 $assignments = $assignments_stmt->get_result();
 
+// Get Active Tests
+$tests_query = "SELECT * FROM course_tests WHERE course_id = ? AND is_active = 1 ORDER BY test_type DESC"; // Pre then Post? No, 'pre' < 'post'. DESC means Post then Pre. Let's sorting later or just handle loop.
+$tests_stmt = $conn->prepare($tests_query);
+$tests_stmt->bind_param("i", $course_id);
+$tests_stmt->execute();
+$active_tests = $tests_stmt->get_result();
+
 // Get announcements
 $announcements_query = "SELECT * FROM announcements WHERE course_id = ? ORDER BY created_at DESC LIMIT 5";
 $announcements_stmt = $conn->prepare($announcements_query);
@@ -81,24 +88,28 @@ $announcements_stmt->bind_param("i", $course_id);
 $announcements_stmt->execute();
 $announcements = $announcements_stmt->get_result();
 // Thai Date Helper
-function th_dt($datetime) {
-    if (!$datetime) return '-';
+function th_dt($datetime)
+{
+    if (!$datetime)
+        return '-';
     $timestamp = strtotime($datetime);
     $months_th = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
     $day = date('j', $timestamp);
-    $month = $months_th[(int)date('n', $timestamp)];
-    $year = (int)date('Y', $timestamp) + 543;
+    $month = $months_th[(int) date('n', $timestamp)];
+    $year = (int) date('Y', $timestamp) + 543;
     $time = date('H:i', $timestamp);
     return "$day $month $year $time น.";
 }
 
-function th_date($date) {
-    if (!$date) return '-';
+function th_date($date)
+{
+    if (!$date)
+        return '-';
     $timestamp = strtotime($date);
     $months_th = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
     $day = date('j', $timestamp);
-    $month = $months_th[(int)date('n', $timestamp)];
-    $year = (int)date('Y', $timestamp) + 543;
+    $month = $months_th[(int) date('n', $timestamp)];
+    $year = (int) date('Y', $timestamp) + 543;
     return "$day $month $year";
 }
 
@@ -1100,6 +1111,51 @@ function th_date($date) {
                 </div>
             <?php endif; ?>
 
+            <!-- Tests Section -->
+            <?php if ($active_tests->num_rows > 0): ?>
+                <div class="materials-section" style="border-left: 4px solid #3182ce;">
+                    <div class="section-header">
+                        <h2>📝 แบบทดสอบ (Tests)</h2>
+                    </div>
+                    <?php
+                    // Reset pointer if needed or just loop
+                    while ($test = $active_tests->fetch_assoc()):
+                        $typeLabel = ($test['test_type'] === 'pre') ? 'แบบทดสอบก่อนเรียน (Pre-test)' : 'แบบทดสอบหลังเรียน (Post-test)';
+
+                        // Check if submitted
+                        $chk = $conn->prepare("SELECT score, total_points FROM student_test_attempts WHERE test_id = ? AND student_id = ?");
+                        $chk->bind_param("ii", $test['id'], $student_id);
+                        $chk->execute();
+                        $res = $chk->get_result();
+                        $attempt = $res->fetch_assoc();
+                        $is_done = ($attempt !== null);
+                        ?>
+                        <div class="material-item">
+                            <div class="info">
+                                <div class="name"><?= $typeLabel ?></div>
+                                <div class="size">
+                                    <?php if ($is_done): ?>
+                                        <span style="color: green;">✅ ทำแล้ว</span>
+                                    <?php else: ?>
+                                        <span style="color: #e53e3e;">⏳ ยังไม่ได้ทำ</span>
+                                        • เวลา:
+                                        <?= $test['time_limit_minutes'] > 0 ? $test['time_limit_minutes'] . ' นาที' : 'ไม่จำกัด' ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php if (!$is_done): ?>
+                                <button class="btn-secondary btn-primary"
+                                    onclick="openTestModal(<?= $test['id'] ?>, '<?= $test['test_type'] ?>')">
+                                    เริ่มทำแบบทดสอบ
+                                </button>
+                            <?php else: ?>
+                                <button class="btn-secondary" disabled>✅ ส่งแล้ว</button>
+                            <?php endif; ?>
+                        </div>
+                    <?php endwhile; ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Assignments Section -->
             <div class="section-header" style="margin-top: 20px;">
                 <h2>📝 งานที่ได้รับมอบหมาย</h2>
@@ -1112,8 +1168,9 @@ function th_date($date) {
                     $is_overdue = $today > $due_date && !$assignment['submission_id'];
                     $is_submitted = $assignment['submission_id'] != null;
                     $is_graded = $is_submitted && $assignment['grade'] != null;
-                ?>
-                    <div class="assignment-card <?= $is_graded ? 'graded' : ($is_overdue ? 'overdue' : ($is_submitted ? 'submitted' : '')) ?>">
+                    ?>
+                    <div
+                        class="assignment-card <?= $is_graded ? 'graded' : ($is_overdue ? 'overdue' : ($is_submitted ? 'submitted' : '')) ?>">
                         <div class="assignment-header">
                             <div style="flex: 1;">
                                 <h3 class="assignment-title"><?= htmlspecialchars($assignment['title']) ?></h3>
@@ -1127,7 +1184,8 @@ function th_date($date) {
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <span class="status-badge <?= $is_graded ? 'status-graded' : ($is_submitted ? 'status-submitted' : ($is_overdue ? 'status-overdue' : 'status-pending')) ?>">
+                            <span
+                                class="status-badge <?= $is_graded ? 'status-graded' : ($is_submitted ? 'status-submitted' : ($is_overdue ? 'status-overdue' : 'status-pending')) ?>">
                                 <?= $is_graded ? '✓ ให้คะแนนแล้ว' : ($is_submitted ? '✓ ส่งแล้ว' : ($is_overdue ? '⚠ เลยกำหนดส่ง' : '⏳ รอส่ง')) ?>
                             </span>
                         </div>
@@ -1143,7 +1201,8 @@ function th_date($date) {
                             <div class="submission-details">
                                 <div class="submission-details-header">
                                     <h4>📋 งานที่ส่ง</h4>
-                                    <span class="submission-toggle" onclick="toggleSubmissionDetails(<?= $assignment['submission_id'] ?>)">
+                                    <span class="submission-toggle"
+                                        onclick="toggleSubmissionDetails(<?= $assignment['submission_id'] ?>)">
                                         <span id="toggle-text-<?= $assignment['submission_id'] ?>">ซ่อน</span>
                                         <span id="toggle-icon-<?= $assignment['submission_id'] ?>">▲</span>
                                     </span>
@@ -1153,7 +1212,8 @@ function th_date($date) {
                                     <?php if ($assignment['submission_text']): ?>
                                         <div class="submission-content">
                                             <div class="submission-label">ข้อความที่ส่ง:</div>
-                                            <div class="submission-text"><?= nl2br(htmlspecialchars($assignment['submission_text'])) ?></div>
+                                            <div class="submission-text"><?= nl2br(htmlspecialchars($assignment['submission_text'])) ?>
+                                            </div>
                                         </div>
                                     <?php endif; ?>
 
@@ -1200,18 +1260,21 @@ function th_date($date) {
 
                         <div class="assignment-actions">
                             <?php if (!$is_submitted): ?>
-                                <button class="btn-primary" onclick="openSubmissionModal(<?= $assignment['id'] ?>, '<?= htmlspecialchars(addslashes($assignment['title'])) ?>')">
+                                <button class="btn-primary"
+                                    onclick="openSubmissionModal(<?= $assignment['id'] ?>, '<?= htmlspecialchars(addslashes($assignment['title'])) ?>')">
                                     📤 ส่งงาน
                                 </button>
                             <?php else: ?>
                                 <?php if (!$is_graded): ?>
                                     <!-- Edit Submission Button (only if not graded) -->
-                                    <button class="btn-secondary btn-warning" onclick="editSubmission(<?= $assignment['id'] ?>, <?= $assignment['submission_id'] ?>, '<?= htmlspecialchars(addslashes($assignment['title'])) ?>')">
+                                    <button class="btn-secondary btn-warning"
+                                        onclick="editSubmission(<?= $assignment['id'] ?>, <?= $assignment['submission_id'] ?>, '<?= htmlspecialchars(addslashes($assignment['title'])) ?>')">
                                         ✏️ แก้ไขการส่ง
                                     </button>
 
                                     <!-- Cancel Submission Button (only if not graded) -->
-                                    <button class="btn-secondary btn-danger" onclick="confirmCancelSubmission(<?= $assignment['submission_id'] ?>, <?= $assignment['id'] ?>)">
+                                    <button class="btn-secondary btn-danger"
+                                        onclick="confirmCancelSubmission(<?= $assignment['submission_id'] ?>, <?= $assignment['id'] ?>)">
                                         ❌ ยกเลิกการส่ง
                                     </button>
                                 <?php else: ?>
@@ -1220,13 +1283,7 @@ function th_date($date) {
                                     </button>
                                 <?php endif; ?>
                             <?php endif; ?>
-                            <button class="btn-secondary btn-warning" onclick="openTestModal(<?= $assignment['id'] ?>, 'pre')">
-                                📋 แบบทดสอบก่อนเรียน
-                            </button>
 
-                            <button class="btn-secondary btn-warning" onclick="openTestModal(<?= $assignment['id'] ?>, 'post')">
-                                📋 แบบทดสอบหลังเรียน
-                            </button>
                         </div>
                         <!-- Assignment Chat -->
                         <div class="assignment-chat">
@@ -1238,8 +1295,10 @@ function th_date($date) {
                                     <p>เริ่มการสนทนาเกี่ยวกับงานนี้</p>
                                 </div>
                                 <div class="chat-input-container">
-                                    <textarea placeholder="พิมพ์ข้อความ..." id="chat-input-<?= $assignment['id'] ?>" rows="1"></textarea>
-                                    <button class="btn-primary" onclick="sendAssignmentMessage(<?= $assignment['id'] ?>)">ส่ง</button>
+                                    <textarea placeholder="พิมพ์ข้อความ..." id="chat-input-<?= $assignment['id'] ?>"
+                                        rows="1"></textarea>
+                                    <button class="btn-primary"
+                                        onclick="sendAssignmentMessage(<?= $assignment['id'] ?>)">ส่ง</button>
                                 </div>
                             </div>
                         </div>
@@ -1300,7 +1359,9 @@ function th_date($date) {
                                     <div class="size"><?= round($material['file_size'] / 1024, 2) ?> KB</div>
                                 <?php endif; ?>
                             </div>
-                            <a href="../<?= htmlspecialchars($material['file_path']) ?>" class="btn-secondary btn-success" download target="_blank" style="text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                            <a href="../<?= htmlspecialchars($material['file_path']) ?>" class="btn-secondary btn-success"
+                                download target="_blank"
+                                style="text-decoration: none; display: flex; align-items: center; gap: 5px;">
                                 📥 ดาวน์โหลด
                             </a>
                         </div>
@@ -1329,19 +1390,13 @@ function th_date($date) {
 
                 <div class="form-group">
                     <label for="submissionText">รายละเอียดการส่ง</label>
-                    <textarea
-                        id="submissionText"
-                        name="submission_text"
-                        rows="8"
+                    <textarea id="submissionText" name="submission_text" rows="8"
                         placeholder="พิมพ์รายละเอียดการส่งงาน แปะลิงก์ หรืออธิบายงานของคุณ..."></textarea>
                 </div>
 
                 <div class="form-group">
                     <label for="submissionFile">แนบไฟล์ (ไม่บังคับ)</label>
-                    <input
-                        type="file"
-                        id="submissionFile"
-                        name="submission_file"
+                    <input type="file" id="submissionFile" name="submission_file"
                         accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.ppt,.pptx,.xls,.xlsx">
                     <div id="currentFileDisplay" class="current-file-display" style="display: none;">
                         <span style="color: #718096;">📎 ไฟล์ปัจจุบัน: </span>
@@ -1406,18 +1461,13 @@ function th_date($date) {
             <form id="createGroupForm" onsubmit="createGroup(event)">
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600;">ชื่อกลุ่ม</label>
-                    <input
-                        type="text"
-                        name="group_name"
-                        required
+                    <input type="text" name="group_name" required
                         style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
                         placeholder="ระบุชื่อกลุ่ม...">
                 </div>
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600;">รายละเอียด</label>
-                    <textarea
-                        name="group_description"
-                        rows="3"
+                    <textarea name="group_description" rows="3"
                         style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
                         placeholder="รายละเอียดกลุ่ม..."></textarea>
                 </div>
@@ -1598,7 +1648,9 @@ function th_date($date) {
         }
 
         // Test Modal
-        function openTestModal(assignmentId, testType) {
+        let currentTestId = 0;
+        function openTestModal(testId, testType) {
+            currentTestId = testId;
             const title = testType === 'pre' ? 'แบบทดสอบก่อนเรียน' : 'แบบทดสอบหลังเรียน';
             document.getElementById('testModalTitle').textContent = title;
             document.getElementById('testModal').classList.add('show');
@@ -1606,11 +1658,13 @@ function th_date($date) {
 
         function closeTestModal() {
             document.getElementById('testModal').classList.remove('show');
+            currentTestId = 0;
         }
 
         function startTest() {
-            alert('ระบบแบบทดสอบจะเปิดใช้งานในเร็วๆ นี้');
-            closeTestModal();
+            if (currentTestId > 0) {
+                window.location.href = `take_test.php?test_id=${currentTestId}`;
+            }
         }
 
         // Floating Chat
@@ -1671,13 +1725,13 @@ function th_date($date) {
         }
 
         // Close modals when clicking outside
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             if (event.target.classList.contains('modal')) {
                 event.target.classList.remove('show');
             }
         }
         // Keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closeSubmissionModal();
                 closeTestModal();

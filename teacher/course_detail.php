@@ -7,8 +7,8 @@ if (!isset($_SESSION["user"]) || $_SESSION["user"]["role"] !== "teacher") {
     exit();
 }
 
-$teacher_id = (int)$_SESSION["user"]["id"];
-$course_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$teacher_id = (int) $_SESSION["user"]["id"];
+$course_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
 if ($course_id === 0) {
     header("Location: courses.php");
@@ -17,7 +17,7 @@ if ($course_id === 0) {
 
 function h($str)
 {
-    return htmlspecialchars((string)$str, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars((string) $str, ENT_QUOTES, 'UTF-8');
 }
 
 // 1. Get Course Details
@@ -99,7 +99,9 @@ $materials = $mat_stmt->get_result();
                 <p><?= h($course['description'] ?: 'ไม่มีรายละเอียด') ?></p>
             </div>
             <div class="actions-row">
-                <button onclick="openEditCourseModal(<?= $course_id ?>, '<?= h($course['title']) ?>', `<?= h($course['description']) ?>`)" class="btn btn-secondary">
+                <button
+                    onclick="openEditCourseModal(<?= $course_id ?>, '<?= h($course['title']) ?>', `<?= h($course['description']) ?>`)"
+                    class="btn btn-secondary">
                     ✏️ แก้ไขหลักสูตร
                 </button>
                 <button onclick="deleteCourse(<?= $course_id ?>)" class="btn btn-danger">
@@ -135,14 +137,14 @@ $materials = $mat_stmt->get_result();
 
         <!-- Content Grid (Assignments & Students) -->
         <div class="content-grid">
-            
+
             <!-- Assignments Column -->
             <div class="card">
                 <div class="card-header">
                     <h2>งานล่าสุด</h2>
                     <a href="assignments.php?course_id=<?= $course_id ?>">ดูทั้งหมด →</a>
                 </div>
-                
+
                 <?php if ($assignments->num_rows > 0): ?>
                     <?php while ($assign = $assignments->fetch_assoc()): ?>
                         <div class="assignment-item">
@@ -155,7 +157,8 @@ $materials = $mat_stmt->get_result();
                 <?php else: ?>
                     <div class="empty-state" style="padding: 20px;">
                         <p>ยังไม่มีงานในหลักสูตรนี้</p>
-                        <a href="assignments.php?course_id=<?= $course_id ?>" class="btn btn-sm btn-primary" style="margin-top:10px;">จัดการงาน</a>
+                        <a href="assignments.php?course_id=<?= $course_id ?>" class="btn btn-sm btn-primary"
+                            style="margin-top:10px;">จัดการงาน</a>
                     </div>
                 <?php endif; ?>
             </div>
@@ -177,10 +180,10 @@ $materials = $mat_stmt->get_result();
                         </thead>
                         <tbody>
                             <?php if ($students->num_rows > 0): ?>
-                                <?php while ($std = $students->fetch_assoc()): 
+                                <?php while ($std = $students->fetch_assoc()):
                                     $avatar = $std['avatar'] ?? '';
                                     $initial = mb_substr($std['name'], 0, 1, 'UTF-8');
-                                ?>
+                                    ?>
                                     <tr>
                                         <td>
                                             <div class="student-cell">
@@ -209,29 +212,60 @@ $materials = $mat_stmt->get_result();
                 </div>
             </div>
 
+            <!-- Tests Column -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>แบบทดสอบ (Tests)</h2>
+                </div>
+                <div class="test-list" style="padding: 10px;">
+                    <div class="test-item"
+                        style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #eee; margin-bottom:8px;">
+                        <div>
+                            <div style="font-weight:600;">แบบทดสอบก่อนเรียน (Pre-test)</div>
+                            <div style="font-size:12px; color:#718096;">สำหรับวัดความรู้พื้นฐาน</div>
+                        </div>
+                        <a href="manage_test.php?course_id=<?= $course_id ?>&type=pre"
+                            class="btn btn-sm btn-outline-primary">จัดการ</a>
+                    </div>
+                    <div class="test-item"
+                        style="display:flex; justify-content:space-between; align-items:center; padding:12px;">
+                        <div>
+                            <div style="font-weight:600;">แบบทดสอบหลังเรียน (Post-test)</div>
+                            <div style="font-size:12px; color:#718096;">สำหรับวัดผลสัมฤทธิ์</div>
+                        </div>
+                        <a href="manage_test.php?course_id=<?= $course_id ?>&type=post"
+                            class="btn btn-sm btn-outline-primary">จัดการ</a>
+                    </div>
+                </div>
+            </div>
+
             <!-- Course Materials Column -->
             <div class="card">
                 <div class="card-header">
                     <h2>เอกสารประกอบการเรียน</h2>
                     <button onclick="openUploadModal()" class="btn btn-sm btn-primary">+ อัปโหลด</button>
                 </div>
-                
+
                 <?php if ($materials->num_rows > 0): ?>
                     <div class="material-list">
                         <?php while ($mat = $materials->fetch_assoc()): ?>
-                            <div class="material-item" style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
+                            <div class="material-item"
+                                style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
                                 <div style="display:flex; align-items:center; gap:10px;">
                                     <span style="font-size:20px;">📄</span>
                                     <div>
                                         <div style="font-weight:600;"><?= h($mat['title']) ?></div>
                                         <div style="font-size:12px; color:#718096;">
-                                            <?= round($mat['file_size'] / 1024, 2) ?> KB • <?= date('d/m/Y', strtotime($mat['uploaded_at'])) ?>
+                                            <?= round($mat['file_size'] / 1024, 2) ?> KB •
+                                            <?= date('d/m/Y', strtotime($mat['uploaded_at'])) ?>
                                         </div>
                                     </div>
                                 </div>
                                 <div style="display:flex; gap:10px;">
-                                    <a href="../<?= h($mat['file_path']) ?>" target="_blank" class="btn btn-sm btn-ghost" title="ดาวน์โหลด">⬇️</a>
-                                    <button onclick="deleteMaterial(<?= $mat['id'] ?>)" class="btn btn-sm btn-danger" style="padding:4px 8px;" title="ลบ">🗑️</button>
+                                    <a href="../<?= h($mat['file_path']) ?>" target="_blank" class="btn btn-sm btn-ghost"
+                                        title="ดาวน์โหลด">⬇️</a>
+                                    <button onclick="deleteMaterial(<?= $mat['id'] ?>)" class="btn btn-sm btn-danger"
+                                        style="padding:4px 8px;" title="ลบ">🗑️</button>
                                 </div>
                             </div>
                         <?php endwhile; ?>
@@ -287,7 +321,8 @@ $materials = $mat_stmt->get_result();
                 </div>
                 <div class="form-group">
                     <label class="form-label">ไฟล์ (PDF, Doc, Image) <span style="color:red">*</span></label>
-                    <input type="file" name="file" class="form-control" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.jpg,.png,.jpeg">
+                    <input type="file" name="file" class="form-control" required
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.jpg,.png,.jpeg">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%;">อัปโหลด</button>
             </form>
@@ -313,9 +348,9 @@ $materials = $mat_stmt->get_result();
             const formData = new FormData(e.target);
 
             fetch('../api/teacher_api.php?action=update_course', {
-                    method: 'POST',
-                    body: formData
-                })
+                method: 'POST',
+                body: formData
+            })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
@@ -336,12 +371,12 @@ $materials = $mat_stmt->get_result();
             if (!confirm('ยืนยันที่จะลบหลักสูตรนี้? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
 
             fetch('../api/teacher_api.php?action=delete_course', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: 'id=' + encodeURIComponent(courseId)
-                })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'id=' + encodeURIComponent(courseId)
+            })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
@@ -376,35 +411,35 @@ $materials = $mat_stmt->get_result();
         function uploadMaterial(e) {
             e.preventDefault();
             const formData = new FormData(e.target);
-            
+
             // Add action
             // Fetch API doesn't support appending action to FormData if we use URL param for action usually, 
             // but here we can append it to URL or FormData. 
             // My API checks $_GET['action'] usually? Let's check.
             // Yes, $action = $_GET['action'] ?? '';
-            
+
             fetch('../api/teacher_api.php?action=add_material', {
                 method: 'POST',
                 body: formData
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    alert('อัปโหลดสำเร็จ');
-                    location.reload();
-                } else {
-                    alert(data.message || 'อัปโหลดไม่สำเร็จ');
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert('เกิดข้อผิดพลาด');
-            });
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('อัปโหลดสำเร็จ');
+                        location.reload();
+                    } else {
+                        alert(data.message || 'อัปโหลดไม่สำเร็จ');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('เกิดข้อผิดพลาด');
+                });
         }
 
         function deleteMaterial(id) {
             if (!confirm('ยืนยันลบเอกสารนี้?')) return;
-            
+
             const formData = new FormData();
             formData.append('id', id);
 
@@ -412,18 +447,19 @@ $materials = $mat_stmt->get_result();
                 method: 'POST',
                 body: formData
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    alert('ลบสำเร็จ');
-                    location.reload();
-                } else {
-                    alert(data.message || 'ลบไม่สำเร็จ');
-                }
-            })
-            .catch(err => console.error(err));
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('ลบสำเร็จ');
+                        location.reload();
+                    } else {
+                        alert(data.message || 'ลบไม่สำเร็จ');
+                    }
+                })
+                .catch(err => console.error(err));
         }
 
     </script>
 </body>
+
 </html>

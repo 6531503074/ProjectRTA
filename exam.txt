@@ -1,0 +1,34 @@
+What is 2 + 2?
+A. 3
+B. 4
+C. 5
+D. 6
+ANSWER: B
+
+Which planet is known as the Red Planet?
+A. Earth
+B. Venus
+C. Mars
+D. Jupiter
+ANSWER: C
+
+What is the capital of Japan?
+A. Seoul
+B. Beijing
+C. Tokyo
+D. Bangkok
+ANSWER: C
+
+Which language is primarily used for web page styling?
+A. HTML
+B. CSS
+C. JavaScript
+D. Python
+ANSWER: B
+
+Water freezes at what temperature (Celsius)?
+A. 0
+B. 32
+C. 100
+D. -10
+ANSWER: A

@@ -1,0 +1,69 @@
+What is the main purpose of a function in programming?
+A. To store data permanently
+B. To repeat code automatically
+C. To organize code into reusable blocks
+D. To increase program execution time
+ANSWER: C
+
+Which of the following best describes a function parameter?
+A. A value returned by a function
+B. A variable used to receive input values
+C. A global variable
+D. A constant value
+ANSWER: B
+
+What keyword is commonly used to send a value back from a function?
+A. send
+B. output
+C. return
+D. break
+ANSWER: C
+
+Which of the following is NOT a benefit of using functions?
+A. Code reusability
+B. Easier debugging
+C. Faster hardware performance
+D. Better code organization
+ANSWER: C
+
+What happens if a function does not have a return statement?
+A. It causes a syntax error
+B. It always returns zero
+C. It returns a default value or nothing
+D. The program stops immediately
+ANSWER: C
+
+Which type of function does not return a value?
+A. Recursive function
+B. Void function
+C. Parameterized function
+D. Library function
+ANSWER: B
+
+What is function testing in software testing?
+A. Testing the user interface only
+B. Testing individual functions to ensure correct output
+C. Testing network performance
+D. Testing database security
+ANSWER: B
+
+Which testing method focuses on testing a function without knowing its internal code?
+A. White-box testing
+B. Unit testing
+C. Black-box testing
+D. Integration testing
+ANSWER: C
+
+In unit testing, a function should be tested:
+A. Together with the entire system
+B. Only after deployment
+C. Independently from other functions
+D. Without test cases
+ANSWER: C
+
+What is a test case for a function?
+A. The function source code
+B. A set of inputs and expected outputs
+C. A programming language
+D. A compiler option
+ANSWER: B
