@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 08, 2026 at 08:50 AM
+-- Generation Time: Jan 26, 2026 at 10:55 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -66,7 +66,11 @@ INSERT INTO `announcement_reads` (`id`, `announcement_id`, `student_id`, `read_a
 (27, 3, 3, '2026-01-07 07:08:23'),
 (47, 4, 1, '2026-01-07 07:26:16'),
 (56, 1, 1, '2026-01-07 08:00:24'),
-(57, 2, 1, '2026-01-07 08:00:24');
+(57, 2, 1, '2026-01-07 08:00:24'),
+(203, 3, 4, '2026-01-08 08:07:57'),
+(207, 4, 4, '2026-01-08 08:10:40'),
+(208, 1, 4, '2026-01-08 08:10:41'),
+(209, 2, 4, '2026-01-08 08:10:41');
 
 -- --------------------------------------------------------
 
@@ -78,7 +82,7 @@ CREATE TABLE `assignments` (
   `id` int(11) NOT NULL,
   `course_id` int(11) DEFAULT NULL,
   `title` varchar(100) DEFAULT NULL,
-  `due_date` date DEFAULT NULL,
+  `due_date` datetime DEFAULT NULL,
   `description` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -87,10 +91,12 @@ CREATE TABLE `assignments` (
 --
 
 INSERT INTO `assignments` (`id`, `course_id`, `title`, `due_date`, `description`) VALUES
-(1, 1, 'Build a simple PHP Login System', '2026-01-20', NULL),
-(2, 1, 'HTML & CSS Layout Assignment', '2026-01-15', NULL),
-(3, 2, 'Design ER Diagram for Library System', '2026-01-25', '1. Go to Draw.io'),
-(4, 3, 'Write SDLC Report (5 pages)', '2026-01-30', NULL);
+(1, 1, 'Build a simple PHP Login System', '2026-01-20 00:00:00', NULL),
+(2, 1, 'HTML & CSS Layout Assignment', '2026-01-15 00:00:00', NULL),
+(3, 2, 'Design ER Diagram for Library System', '2026-01-25 00:00:00', '1. Go to Draw.io'),
+(4, 3, 'Write SDLC Report (5 pages)', '2026-01-30 00:00:00', NULL),
+(23, 6, '1', '2026-01-16 15:10:00', ''),
+(24, 6, 'lab1', '2026-01-17 11:59:00', '');
 
 -- --------------------------------------------------------
 
@@ -123,7 +129,31 @@ INSERT INTO `assignment_chat` (`id`, `assignment_id`, `user_id`, `message`, `cre
 (10, 3, 1, '2', '2026-01-08 05:10:02'),
 (11, 3, 1, 'f', '2026-01-08 06:59:35'),
 (12, 3, 1, 's', '2026-01-08 06:59:47'),
-(13, 3, 3, '6', '2026-01-08 07:13:25');
+(13, 3, 3, '6', '2026-01-08 07:13:25'),
+(41, 23, 6, 'hi', '2026-01-20 03:44:00'),
+(42, 23, 5, 'ho', '2026-01-20 03:44:47');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `assignment_chat_reads`
+--
+
+CREATE TABLE `assignment_chat_reads` (
+  `id` int(11) NOT NULL,
+  `assignment_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `last_read_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `assignment_chat_reads`
+--
+
+INSERT INTO `assignment_chat_reads` (`id`, `assignment_id`, `user_id`, `last_read_at`) VALUES
+(244, 23, 6, '2026-01-22 08:37:55'),
+(269, 23, 5, '2026-01-26 01:33:49'),
+(583, 24, 5, '2026-01-26 01:33:51');
 
 -- --------------------------------------------------------
 
@@ -139,8 +169,17 @@ CREATE TABLE `assignment_submissions` (
   `file_path` varchar(255) DEFAULT NULL,
   `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `grade` varchar(10) DEFAULT NULL,
-  `feedback` text DEFAULT NULL
+  `feedback` text DEFAULT NULL,
+  `content` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `assignment_submissions`
+--
+
+INSERT INTO `assignment_submissions` (`id`, `assignment_id`, `student_id`, `submission_text`, `file_path`, `submitted_at`, `grade`, `feedback`, `content`) VALUES
+(10, 23, 6, '', 'uploads/submissions/submission_6_23_1768543890.png', '2026-01-16 06:11:30', '100', '', NULL),
+(11, 24, 6, '', 'uploads/submissions/submission_6_24_1768546370.pdf', '2026-01-16 06:52:50', '100', '', NULL);
 
 -- --------------------------------------------------------
 
@@ -153,7 +192,7 @@ CREATE TABLE `courses` (
   `title` varchar(100) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `teacher_id` int(11) DEFAULT NULL,
-  `course_level` enum('1','2','3') DEFAULT NULL
+  `course_level` enum('ขั้นเริ่มต้น','ขั้นกลาง','ขั้นสูง') DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -161,9 +200,11 @@ CREATE TABLE `courses` (
 --
 
 INSERT INTO `courses` (`id`, `title`, `description`, `teacher_id`, `course_level`) VALUES
-(1, 'Web Programming', 'Learn HTML, CSS, PHP, and MySQL', 2),
-(2, 'Database Systems', 'MySQL, ER Diagram, SQL Queries', 2),
-(3, 'Software Engineering', 'SDLC, Agile, UML Diagrams', 2);
+(1, 'Web Programming', 'Learn HTML, CSS, PHP, and MySQL', 2, 'ขั้นเริ่มต้น'),
+(2, 'Database Systems', 'MySQL, ER Diagram, SQL Queries', 2, 'ขั้นเริ่มต้น'),
+(3, 'Software Engineering', 'SDLC, Agile, UML Diagrams', 2, 'ขั้นเริ่มต้น'),
+(5, 'IT', '', 5, 'ขั้นเริ่มต้น'),
+(6, 'AI', '', 5, 'ขั้นเริ่มต้น');
 
 -- --------------------------------------------------------
 
@@ -179,6 +220,14 @@ CREATE TABLE `course_materials` (
   `file_size` int(11) DEFAULT NULL,
   `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `course_materials`
+--
+
+INSERT INTO `course_materials` (`id`, `course_id`, `title`, `file_path`, `file_size`, `uploaded_at`) VALUES
+(2, 6, 'l', 'uploads/materials/696ee68fc477a_1768875663.pdf', 56866, '2026-01-20 02:21:03'),
+(3, 6, '2', 'uploads/materials/696ee6b646dce_1768875702.pdf', 56866, '2026-01-20 02:21:42');
 
 -- --------------------------------------------------------
 
@@ -200,7 +249,22 @@ INSERT INTO `course_students` (`id`, `course_id`, `student_id`) VALUES
 (1, 1, 1),
 (2, 2, 1),
 (3, 3, 1),
-(4, 2, 3);
+(4, 2, 3),
+(5, 1, 4),
+(6, 2, 4),
+(7, 3, 4),
+(26, 6, 1),
+(27, 6, 3),
+(28, 6, 4),
+(29, 6, 6),
+(30, 4, 1),
+(31, 4, 3),
+(32, 4, 4),
+(33, 4, 6),
+(34, 5, 1),
+(35, 5, 3),
+(36, 5, 4),
+(37, 5, 6);
 
 -- --------------------------------------------------------
 
@@ -225,7 +289,8 @@ INSERT INTO `group_chats` (`id`, `course_id`, `name`, `description`, `created_by
 (5, 2, 'Group 1', 'lab 1', 1, '2026-01-08 01:23:16'),
 (6, 2, 'Group 3', 'lab 2', 1, '2026-01-08 01:31:39'),
 (7, 2, 'Group 3', 'lab 3', 3, '2026-01-08 02:17:57'),
-(8, 2, 'Test leave', 'test', 1, '2026-01-08 07:13:53');
+(8, 2, 'Test leave', 'test', 1, '2026-01-08 07:13:53'),
+(9, 6, 'กลุ่ม 1', '', 6, '2026-01-20 06:57:18');
 
 -- --------------------------------------------------------
 
@@ -237,18 +302,21 @@ CREATE TABLE `group_chat_members` (
   `id` int(11) NOT NULL,
   `group_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `joined_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `joined_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `last_read_message_id` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `group_chat_members`
 --
 
-INSERT INTO `group_chat_members` (`id`, `group_id`, `user_id`, `joined_at`) VALUES
-(6, 5, 1, '2026-01-08 01:23:16'),
-(7, 5, 3, '2026-01-08 01:27:21'),
-(10, 7, 3, '2026-01-08 02:17:57'),
-(11, 7, 1, '2026-01-08 02:18:30');
+INSERT INTO `group_chat_members` (`id`, `group_id`, `user_id`, `joined_at`, `last_read_message_id`) VALUES
+(6, 5, 1, '2026-01-08 01:23:16', 0),
+(7, 5, 3, '2026-01-08 01:27:21', 0),
+(10, 7, 3, '2026-01-08 02:17:57', 0),
+(11, 7, 1, '2026-01-08 02:18:30', 0),
+(15, 9, 6, '2026-01-20 06:57:18', 0),
+(16, 9, 5, '2026-01-20 06:57:38', 32);
 
 -- --------------------------------------------------------
 
@@ -276,12 +344,7 @@ INSERT INTO `group_chat_messages` (`id`, `group_id`, `user_id`, `message`, `crea
 (11, 7, 3, 'hi', '2026-01-08 02:18:18'),
 (12, 7, 1, 'hi', '2026-01-08 02:18:36'),
 (13, 7, 1, 'l', '2026-01-08 05:09:36'),
-(14, 7, 1, '1', '2026-01-08 05:09:40'),
-(15, 7, 3, '2', '2026-01-08 05:10:06'),
-(16, 7, 1, '2', '2026-01-08 05:10:11'),
-(17, 7, 3, '4', '2026-01-08 07:13:35'),
-(18, 7, 1, '4', '2026-01-08 07:13:41'),
-(19, 8, 1, 'y', '2026-01-08 07:14:04');
+(32, 9, 6, '33', '2026-01-20 08:09:26');
 
 -- --------------------------------------------------------
 
@@ -324,7 +387,11 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `rank`, `name`, `position`, `affiliation`, `phone`, `email`, `avatar`, `password`, `role`, `courseLevel`, `status`) VALUES
 (1, 'นศท.', 'วิรศิลป์ ลิ้มธนเดชอนันต์', 'ฝึกงาน', 'กรซ.', '0994793969', '6531503074@lamduan.mfu.ac.th', 'uploads/avatars/695c804b3d0aa_1767669835.jfif', '$2y$10$eIt7X/krz1BAHBkB0oXQ6O4os4EzYCTUt0HJiafQ5pRoMV/dgKftu', 'student', 'ขั้นเริ่มต้น', 'active'),
 (2, 'admin', 'Admin', 'admin', 'admin', '099999999', 'admin@gmail.com', 'uploads/avatars/695c8136c1345_1767670070.jfif', '$2y$10$Jfl6OJmbUjG.qILC5ngSwuSJVAMzYMm6UpKZymsEiHZnLBeLVr.La', 'teacher', 'admin', 'active'),
-(3, 'นศท.', 'อธิชา คำดี', 'PM', 'กรซ', '099789546', 'user2@gmail.com', 'uploads/avatars/695e05d611957_1767769558.jfif', '$2y$10$JV1Ex1eQTW65YzjhouBS6.F3pRLCI.WPs2vs1aPPrjbaXlNR7LOfC', 'student', 'ขั้นสูง', 'active');
+(3, 'นศท.', 'อธิชา คำดี', 'PM', 'กรซ', '099789546', 'user2@gmail.com', 'uploads/avatars/695e05d611957_1767769558.jfif', '$2y$10$JV1Ex1eQTW65YzjhouBS6.F3pRLCI.WPs2vs1aPPrjbaXlNR7LOfC', 'student', 'ขั้นเริ่มต้น', 'active'),
+(4, 'ออ', 'Pee', 'ดด', 'กก', '0812345678', 'p@gmail.com', NULL, '$2y$10$ooetj4o48GAN1bpybItizuj8CiwnckYFkVG8CNIfovZvl04DuzpGm', 'student', 'ขั้นเริ่มต้น', 'active'),
+(5, 'พ.อ', 'แอนตัน ลี', 'teacher', '', '0823456789', 'aton@gmail.com', 'uploads/avatars/69671bac7d90d_1768364972.png', '$2y$10$6DmMoCx8KXJS2gZntU1n4OSBns4iIvi1H8uSztoK1.pBV84I3xfgW', 'teacher', '3', 'active'),
+(6, 'ร.อ', 'วอนบิน พัค', 'student', '', '0851234567', 'wonbin@gmail.com', 'uploads/avatars/696857090aed1_1768445705.jpg', '$2y$10$RsQ.jebvgb8awobLP1UHoeFxZB2/FI4MNSl23QgJvlsr6wgfTr9t6', 'student', '1', 'active'),
+(7, 'ร.อ', 'อิน นา', '', '', '0534567891', 'in@gmail.com', 'uploads/avatars/696ef4243c73b_1768879140.jpg', '$2y$10$6NJRc6cYYuG5lGI4dQUnH.NJWuge.1F4guucSaBR/RGPsBtPG/PSO', 'student', '3', 'active');
 
 --
 -- Indexes for dumped tables
@@ -356,6 +423,14 @@ ALTER TABLE `assignments`
 ALTER TABLE `assignment_chat`
   ADD PRIMARY KEY (`id`),
   ADD KEY `assignment_id` (`assignment_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `assignment_chat_reads`
+--
+ALTER TABLE `assignment_chat_reads`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_read` (`assignment_id`,`user_id`),
   ADD KEY `user_id` (`user_id`);
 
 --
@@ -438,73 +513,79 @@ ALTER TABLE `announcements`
 -- AUTO_INCREMENT for table `announcement_reads`
 --
 ALTER TABLE `announcement_reads`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=203;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=219;
 
 --
 -- AUTO_INCREMENT for table `assignments`
 --
 ALTER TABLE `assignments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `assignment_chat`
 --
 ALTER TABLE `assignment_chat`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+
+--
+-- AUTO_INCREMENT for table `assignment_chat_reads`
+--
+ALTER TABLE `assignment_chat_reads`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=584;
 
 --
 -- AUTO_INCREMENT for table `assignment_submissions`
 --
 ALTER TABLE `assignment_submissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `courses`
 --
 ALTER TABLE `courses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `course_materials`
 --
 ALTER TABLE `course_materials`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `course_students`
 --
 ALTER TABLE `course_students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
 -- AUTO_INCREMENT for table `group_chats`
 --
 ALTER TABLE `group_chats`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `group_chat_members`
 --
 ALTER TABLE `group_chat_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `group_chat_messages`
 --
 ALTER TABLE `group_chat_messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT for table `pinned_courses`
 --
 ALTER TABLE `pinned_courses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Constraints for dumped tables
@@ -523,6 +604,13 @@ ALTER TABLE `announcement_reads`
 ALTER TABLE `assignment_chat`
   ADD CONSTRAINT `assignment_chat_ibfk_1` FOREIGN KEY (`assignment_id`) REFERENCES `assignments` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `assignment_chat_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `assignment_chat_reads`
+--
+ALTER TABLE `assignment_chat_reads`
+  ADD CONSTRAINT `assignment_chat_reads_ibfk_1` FOREIGN KEY (`assignment_id`) REFERENCES `assignments` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `assignment_chat_reads_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `assignment_submissions`

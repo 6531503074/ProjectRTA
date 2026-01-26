@@ -222,7 +222,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                 <div class="stat-icon">📌</div>
                 <div>
                     <div class="stat-num"><?= (int)$stats['pending_grades'] ?></div>
-                    <div class="stat-label">รอให้เกรด</div>
+                    <div class="stat-label">รอให้คะแนน</div>
                 </div>
             </div>
         </div>
@@ -303,7 +303,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                             <th>หลักสูตร</th>
                             <th>กำหนดส่ง</th>
                             <th>ความคืบหน้า</th>
-                            <th>รอให้เกรด</th>
+                            <th>รอให้คะแนน</th>
                             <th>จัดการ</th>
                         </tr>
                     </thead>

@@ -35,15 +35,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // Validation
     if (empty($name) || empty($email) || empty($password)) {
-        $error_message = "All required fields must be filled";
+        $error_message = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error_message = "Invalid email format";
+        $error_message = "รูปแบบอีเมลไม่ถูกต้อง";
     } elseif (strlen($password) < 8) {
-        $error_message = "Password must be at least 8 characters long";
+        $error_message = "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร";
     } elseif ($password !== $confirm_password) {
-        $error_message = "Passwords do not match";
+        $error_message = "รหัสผ่านไม่ตรงกัน";
     } elseif (!$terms) {
-        $error_message = "You must agree to the Terms and Conditions";
+        $error_message = "คุณต้องยอมรับข้อกำหนดและเงื่อนไข";
     } else {
         // Handle avatar upload
         if (isset($_FILES["avatar"]) && $_FILES["avatar"]["error"] === UPLOAD_ERR_OK) {
@@ -58,9 +58,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             
             // Validate file
             if (!in_array($file_type, $allowed_types)) {
-                $upload_error = "Only JPG, JPEG, PNG & GIF files are allowed";
+                $upload_error = "อนุญาตเฉพาะไฟล์ JPG, JPEG, PNG และ GIF เท่านั้น";
             } elseif ($file_size > $max_size) {
-                $upload_error = "File size must be less than 2MB";
+                $upload_error = "ขนาดไฟล์ต้องไม่เกิน 2MB";
             } else {
                 // Create uploads directory if it doesn't exist
                 $upload_dir = "../uploads/avatars/";
@@ -75,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 if (move_uploaded_file($file_tmp, $upload_path)) {
                     $avatar = "uploads/avatars/" . $new_filename;
                 } else {
-                    $upload_error = "Failed to upload avatar";
+                    $upload_error = "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ";
                 }
             }
         }
@@ -90,7 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $check_result = $check_stmt->get_result();
             
             if ($check_result->num_rows > 0) {
-                $error_message = "Email already registered";
+                $error_message = "อีเมลนี้ถูกลงทะเบียนแล้ว";
                 // Delete uploaded avatar if email exists
                 if ($avatar && file_exists("../" . $avatar)) {
                     unlink("../" . $avatar);
@@ -119,9 +119,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
                 
                 if ($stmt->execute()) {
-                    $success_message = "Registration successful! You can now login.";
+                    $success_message = "ลงทะเบียนสำเร็จ! คุณสามารถเข้าสู่ระบบได้แล้ว";
                 } else {
-                    $error_message = "Registration failed. Please try again.";
+                    $error_message = "การลงทะเบียนล้มเหลว กรุณาลองใหม่อีกครั้ง";
                     // Delete uploaded avatar if registration fails
                     if ($avatar && file_exists("../" . $avatar)) {
                         unlink("../" . $avatar);
@@ -142,7 +142,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Cyber Security Learning Platform</title>
+    <title>ลงทะเบียน - Cyber Security Learning Platform</title>
+    <!-- Import Thai font -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -151,7 +153,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
@@ -215,6 +217,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             border: 2px solid #e0e0e0;
             border-radius: 5px;
             font-size: 14px;
+            font-family: 'Sarabun', sans-serif;
             transition: border-color 0.3s;
         }
         
@@ -331,6 +334,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             border: none;
             border-radius: 5px;
             font-size: 16px;
+            font-family: 'Sarabun', sans-serif;
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s;
@@ -489,8 +493,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </head>
 <body>
     <div class="register-container">
-        <h2>🎓 Create Student Account</h2>
-        <p class="subtitle">Join our Cyber Security Learning Platform</p>
+        <h2>🎓 สร้างบัญชีนักเรียน</h2>
+        <p class="subtitle">เข้าร่วมแพลตฟอร์มการเรียนรู้ความปลอดภัยทางไซเบอร์ของเรา</p>
         
         <?php if ($error_message): ?>
             <div class="error-message"><?php echo htmlspecialchars($error_message); ?></div>
@@ -499,8 +503,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <?php if ($success_message): ?>
             <div class="success-message">
                 <?php echo htmlspecialchars($success_message); ?>
-                <br><a href="login.php"><strong>Click here to login</strong></a>
-                <p id="countdown" style="margin-top: 10px; font-size: 12px; color: #666;">Redirecting in <span id="timer">5</span> seconds...</p>
+                <br><a href="login.php"><strong>เข้าสู่ระบบที่นี่</strong></a>
+                <p id="countdown" style="margin-top: 10px; font-size: 12px; color: #666;">กำลังเปลี่ยนหน้าใน <span id="timer">5</span> วินาที...</p>
                 <script>
                     let seconds = 5;
                     const timer = document.getElementById('timer');
@@ -519,44 +523,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <form method="POST" action="" id="registerForm" enctype="multipart/form-data">
             <!-- Avatar Upload -->
             <div class="form-group">
-                <label>Profile Picture</label>
+                <label>รูปโปรไฟล์</label>
                 <div class="avatar-upload">
                     <div class="avatar-preview" id="avatarPreview">
                         <span class="avatar-preview-icon">👤</span>
                     </div>
                     <div class="avatar-upload-btn">
-                        <label for="avatar">Choose Image</label>
+                        <label for="avatar">เลือกรูปภาพ</label>
                         <input 
                             type="file" 
                             id="avatar" 
                             name="avatar" 
                             accept="image/jpeg,image/jpg,image/png,image/gif"
                         >
-                        <div class="avatar-info">JPG, PNG, GIF (Max 2MB)</div>
+                        <div class="avatar-info">JPG, PNG, GIF (สูงสุด 2MB)</div>
                     </div>
                 </div>
             </div>
             
             <!-- Required Fields -->
             <div class="form-group">
-                <label for="name">Full Name <span class="required">*</span></label>
+                <label for="name">ชื่อ-นามสกุล <span class="required">*</span></label>
                 <input 
                     type="text" 
                     id="name" 
                     name="name" 
-                    placeholder="Enter your full name" 
+                    placeholder="กรอกชื่อ-นามสกุลของคุณ" 
                     required
                     value="<?php echo isset($_POST['name']) ? htmlspecialchars($_POST['name']) : ''; ?>"
                 >
             </div>
             
             <div class="form-group">
-                <label for="email">Email Address <span class="required">*</span></label>
+                <label for="email">อีเมล <span class="required">*</span></label>
                 <input 
                     type="email" 
                     id="email" 
                     name="email" 
-                    placeholder="Enter your email" 
+                    placeholder="กรอกอีเมลของคุณ" 
                     required
                     value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>"
                 >
@@ -564,12 +568,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="password">Password <span class="required">*</span></label>
+                    <label for="password">รหัสผ่าน <span class="required">*</span></label>
                     <input 
                         type="password" 
                         id="password" 
                         name="password" 
-                        placeholder="Min. 8 characters" 
+                        placeholder="อย่างน้อย 8 ตัวอักษร" 
                         required
                         minlength="8"
                     >
@@ -579,12 +583,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 </div>
                 
                 <div class="form-group">
-                    <label for="confirm_password">Confirm Password <span class="required">*</span></label>
+                    <label for="confirm_password">ยืนยันรหัสผ่าน <span class="required">*</span></label>
                     <input 
                         type="password" 
                         id="confirm_password" 
                         name="confirm_password" 
-                        placeholder="Repeat password" 
+                        placeholder="กรอกรหัสผ่านอีกครั้ง" 
                         required
                         minlength="8"
                     >
@@ -593,24 +597,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             
             <!-- Optional Fields -->
             <div class="optional-section">
-                <div class="optional-header">📋 Optional Information</div>
+                <div class="optional-header">📋 ข้อมูลเพิ่มเติม (ไม่บังคับ)</div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="rank">Rank</label>
+                        <label for="rank">ยศ</label>
                         <input 
                             type="text" 
                             id="rank" 
                             name="rank" 
-                            placeholder="e.g., Beginner, Advanced"
+                            placeholder="เช่น สิบเอก, ร้อยโท"
                             value="<?php echo isset($_POST['rank']) ? htmlspecialchars($_POST['rank']) : ''; ?>"
                         >
                     </div>
                     
                     <div class="form-group">
-                        <label for="courseLevel">Course Level</label>
+                        <label for="courseLevel">ระดับหลักสูตร</label>
                         <select id="courseLevel" name="courseLevel">
-                            <option value="">-- Select Level --</option>
+                            <option value="">-- เลือกระดับ --</option>
                             <option value="1" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '1') ? 'selected' : ''; ?>>ขั้นเริ่มต้น</option>
                             <option value="2" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '2') ? 'selected' : ''; ?>>ขั้นกลาง</option>
                             <option value="3" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '3') ? 'selected' : ''; ?>>ขั้นสูง</option>
@@ -619,30 +623,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 </div>
                 
                 <div class="form-group">
-                    <label for="affiliation">School/University</label>
+                    <label for="affiliation">สังกัด</label>
                     <input 
                         type="text" 
                         id="affiliation" 
                         name="affiliation" 
-                        placeholder="Your educational institution"
+                        placeholder="ระบุสังกัดของคุณ"
                         value="<?php echo isset($_POST['affiliation']) ? htmlspecialchars($_POST['affiliation']) : ''; ?>"
                     >
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="position">Position</label>
+                        <label for="position">ตำแหน่ง</label>
                         <input 
                             type="text" 
                             id="position" 
                             name="position" 
-                            placeholder="e.g., Student, Researcher"
+                            placeholder="เช่น นักเรียน, นักวิจัย"
                             value="<?php echo isset($_POST['position']) ? htmlspecialchars($_POST['position']) : ''; ?>"
                         >
                     </div>
                     
                     <div class="form-group">
-                        <label for="phone">Phone Number</label>
+                        <label for="phone">เบอร์โทรศัพท์</label>
                         <input 
                             type="tel" 
                             id="phone" 
@@ -663,15 +667,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     required
                 >
                 <label for="terms">
-                    I agree to the <a href="#" id="termsLink">Terms and Conditions</a> and <a href="#" id="privacyLink">Privacy Policy</a> <span class="required">*</span>
+                    ฉันยอมรับ <a href="#" id="termsLink">ข้อกำหนดและเงื่อนไข</a> และ <a href="#" id="privacyLink">นโยบายความเป็นส่วนตัว</a> <span class="required">*</span>
                 </label>
             </div>
             
-            <button type="submit" id="submitBtn">Create Account</button>
+            <button type="submit" id="submitBtn">สร้างบัญชี</button>
         </form>
         
         <div class="links">
-            Already have an account? <a href="login.php">Login here</a>
+            มีบัญชีอยู่แล้ว? <a href="login.php">เข้าสู่ระบบที่นี่</a>
         </div>
     </div>
     
@@ -679,38 +683,38 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <div id="termsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Terms and Conditions</h3>
+                <h3>ข้อกำหนดและเงื่อนไข</h3>
                 <span class="close" id="closeTerms">&times;</span>
             </div>
             <div class="modal-body">
-                <p><strong>Last Updated: January 2026</strong></p>
+                <p><strong>อัปเดตล่าสุด: มกราคม 2026</strong></p>
                 
-                <h4>1. Acceptance of Terms</h4>
-                <p>By accessing and using this Cyber Security Learning Platform, you accept and agree to be bound by the terms and provision of this agreement.</p>
+                <h4>1. การยอมรับข้อกำหนด</h4>
+                <p>ในการเข้าถึงและใช้งานแพลตฟอร์มการเรียนรู้ความปลอดภัยทางไซเบอร์นี้ คุณยอมรับและตกลงที่จะผูกพันตามข้อกำหนดและเงื่อนไขของข้อตกลงนี้</p>
                 
-                <h4>2. Use of Service</h4>
-                <p>You agree to use this platform for lawful purposes only. You must not use this platform:</p>
+                <h4>2. การใช้บริการ</h4>
+                <p>คุณตกลงที่จะใช้แพลตฟอร์มนี้เพื่อวัตถุประสงค์ที่ถูกต้องตามกฎหมายเท่านั้น คุณต้องไม่ใช้แพลตฟอร์มนี้เพื่อ:</p>
                 <ul>
-                    <li>To engage in any illegal activities</li>
-                    <li>To transmit any harmful code or malware</li>
-                    <li>To violate any applicable laws or regulations</li>
-                    <li>To harass, abuse, or harm other users</li>
+                    <li>มีส่วนร่วมในกิจกรรมที่ผิดกฎหมายใดๆ</li>
+                    <li>ส่งรหัสที่เป็นอันตรายหรือมัลแวร์</li>
+                    <li>ละเมิดกฎหมายหรือระเบียบข้อบังคับที่เกี่ยวข้อง</li>
+                    <li>คุกคาม ข่มเหง หรือทำร้ายผู้ใช้อื่น</li>
                 </ul>
                 
-                <h4>3. Account Responsibilities</h4>
-                <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.</p>
+                <h4>3. ความรับผิดชอบต่อบัญชี</h4>
+                <p>คุณมีหน้าที่รับผิดชอบในการรักษาความลับของข้อมูลบัญชีของคุณและกิจกรรมทั้งหมดที่เกิดขึ้นภายใต้บัญชีของคุณ</p>
                 
-                <h4>4. Content Usage</h4>
-                <p>All educational content provided on this platform is for learning purposes only. Unauthorized reproduction or distribution is prohibited.</p>
+                <h4>4. การใช้เนื้อหา</h4>
+                <p>เนื้อหาการศึกษาทั้งหมดที่ให้บริการบนแพลตฟอร์มนี้มีไว้เพื่อการเรียนรู้เท่านั้น ห้ามทำซ้ำหรือเผยแพร่โดยไม่ได้รับอนุญาต</p>
                 
-                <h4>5. Ethical Hacking</h4>
-                <p>Any knowledge gained from this platform should only be used for ethical purposes. Unauthorized access to computer systems is illegal.</p>
+                <h4>5. การแฮ็กอย่างมีจริยธรรม (Ethical Hacking)</h4>
+                <p>ความรู้ที่ได้รับจากแพลตฟอร์มนี้ควรใช้เพื่อวัตถุประสงค์ทางจริยธรรมเท่านั้น การเข้าถึงระบบคอมพิวเตอร์โดยไม่ได้รับอนุญาตถือเป็นสิ่งผิดกฎหมาย</p>
                 
-                <h4>6. Termination</h4>
-                <p>We reserve the right to terminate accounts that violate these terms without prior notice.</p>
+                <h4>6. การยกเลิกการใช้งาน</h4>
+                <p>เราขอสงวนสิทธิ์ในการยกเลิกบัญชีที่ละเมิดข้อกำหนดเหล่านี้โดยไม่ต้องแจ้งให้ทราบล่วงหน้า</p>
                 
-                <h4>7. Changes to Terms</h4>
-                <p>We reserve the right to modify these terms at any time. Continued use of the platform constitutes acceptance of modified terms.</p>
+                <h4>7. การเปลี่ยนแปลงข้อกำหนด</h4>
+                <p>เราขอสงวนสิทธิ์ในการแก้ไขข้อกำหนดเหล่านี้ได้ทุกเมื่อ การใช้งานแพลตฟอร์มต่อไปถือเป็นการยอมรับข้อกำหนดที่แก้ไขแล้ว</p>
             </div>
         </div>
     </div>
@@ -719,55 +723,55 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <div id="privacyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Privacy Policy</h3>
+                <h3>นโยบายความเป็นส่วนตัว</h3>
                 <span class="close" id="closePrivacy">&times;</span>
             </div>
             <div class="modal-body">
-                <p><strong>Last Updated: January 2026</strong></p>
+                <p><strong>อัปเดตล่าสุด: มกราคม 2026</strong></p>
                 
-                <h4>1. Information We Collect</h4>
-                <p>We collect information that you provide directly to us, including:</p>
+                <h4>1. ข้อมูลที่เราเก็บรวบรวม</h4>
+                <p>เราเก็บรวบรวมข้อมูลที่คุณให้โดยตรง รวมถึง:</p>
                 <ul>
-                    <li>Name and email address</li>
-                    <li>Profile picture (optional)</li>
-                    <li>Educational background information</li>
-                    <li>Learning progress and achievements</li>
+                    <li>ชื่อและที่อยู่อีเมล</li>
+                    <li>รูปโปรไฟล์ (ไม่บังคับ)</li>
+                    <li>ข้อมูลพื้นฐานทางการศึกษา</li>
+                    <li>ความคืบหน้าในการเรียนรู้และความสำเร็จ</li>
                 </ul>
                 
-                <h4>2. How We Use Your Information</h4>
-                <p>We use the information we collect to:</p>
+                <h4>2. วิธีที่เราใช้ข้อมูลของคุณ</h4>
+                <p>เราใช้ข้อมูลที่เราเก็บรวบรวมเพื่อ:</p>
                 <ul>
-                    <li>Provide and improve our educational services</li>
-                    <li>Personalize your learning experience</li>
-                    <li>Communicate with you about courses and updates</li>
-                    <li>Ensure platform security</li>
+                    <li>ให้บริการและปรับปรุงบริการการศึกษาของเรา</li>
+                    <li>ปรับแต่งประสบการณ์การเรียนรู้ของคุณ</li>
+                    <li>ติดต่อสื่อสารกับคุณเกี่ยวกับหลักสูตรและการอัปเดต</li>
+                    <li>รักษาความปลอดภัยของแพลตฟอร์ม</li>
                 </ul>
                 
-                <h4>3. Information Sharing</h4>
-                <p>We do not sell or share your personal information with third parties except:</p>
+                <h4>3. การแบ่งปันข้อมูล</h4>
+                <p>เราไม่ขายหรือแบ่งปันข้อมูลส่วนบุคคลของคุณกับบุคคลที่สาม ยกเว้น:</p>
                 <ul>
-                    <li>With your explicit consent</li>
-                    <li>To comply with legal obligations</li>
-                    <li>To protect our rights and safety</li>
+                    <li>เมื่อได้รับความยินยอมจากคุณอย่างชัดแจ้ง</li>
+                    <li>เพื่อปฏิบัติตามข้อผูกพันทางกฎหมาย</li>
+                    <li>เพื่อปกป้องสิทธิ์และความปลอดภัยของเรา</li>
                 </ul>
                 
-                <h4>4. Data Security</h4>
-                <p>We implement appropriate security measures to protect your personal information from unauthorized access, alteration, or destruction.</p>
+                <h4>4. ความปลอดภัยของข้อมูล</h4>
+                <p>เราใช้มาตรการรักษาความปลอดภัยที่เหมาะสมเพื่อปกป้องข้อมูลส่วนบุคคลของคุณจากการเข้าถึง การเปลี่ยนแปลง หรือการทำลายโดยไม่ได้รับอนุญาต</p>
                 
-                <h4>5. Your Rights</h4>
-                <p>You have the right to:</p>
+                <h4>5. สิทธิ์ของคุณ</h4>
+                <p>คุณมีสิทธิ์ที่จะ:</p>
                 <ul>
-                    <li>Access your personal data</li>
-                    <li>Request correction of inaccurate data</li>
-                    <li>Request deletion of your account</li>
-                    <li>Opt-out of marketing communications</li>
+                    <li>เข้าถึงข้อมูลส่วนบุคคลของคุณ</li>
+                    <li>ขอแก้ไขข้อมูลที่ไม่ถูกต้อง</li>
+                    <li>ขอลบข้อมูลบัญชีของคุณ</li>
+                    <li>เลือกที่จะไม่รับการสื่อสารทางการตลาด</li>
                 </ul>
                 
-                <h4>6. Cookies</h4>
-                <p>We use cookies to enhance your experience and maintain your session. You can control cookie settings in your browser.</p>
+                <h4>6. คุกกี้ (Cookies)</h4>
+                <p>เราใช้คุกกี้เพื่อเพิ่มประสบการณ์ของคุณและรักษาเซสชันการใช้งาน คุณสามารถควบคุมการตั้งค่าคุกกี้ในเบราว์เซอร์ของคุณ</p>
                 
-                <h4>7. Contact Us</h4>
-                <p>If you have questions about this Privacy Policy, please contact us at privacy@cybersecuritylearning.com</p>
+                <h4>7. ติดต่อเรา</h4>
+                <p>หากคุณมีคำถามเกี่ยวกับนโยบายความเป็นส่วนตัวนี้ โปรดติดต่อเราที่ privacy@cybersecuritylearning.com</p>
             </div>
         </div>
     </div>
@@ -782,7 +786,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if (file) {
                 // Validate file size
                 if (file.size > 2 * 1024 * 1024) {
-                    alert('File size must be less than 2MB');
+                    alert('ขนาดไฟล์ต้องไม่เกิน 2MB');
                     this.value = '';
                     return;
                 }
@@ -790,7 +794,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 // Validate file type
                 const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
                 if (!validTypes.includes(file.type)) {
-                    alert('Only JPG, PNG, and GIF files are allowed');
+                    alert('อนุญาตเฉพาะไฟล์ JPG, PNG และ GIF เท่านั้น');
                     this.value = '';
                     return;
                 }
@@ -835,13 +839,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             
             if (password !== confirmPassword) {
                 e.preventDefault();
-                alert('Passwords do not match!');
+                alert('รหัสผ่านไม่ตรงกัน!');
                 return false;
             }
             
             if (!terms) {
                 e.preventDefault();
-                alert('You must agree to the Terms and Conditions');
+                alert('คุณต้องยอมรับข้อกำหนดและเงื่อนไข');
                 return false;
             }
         });
