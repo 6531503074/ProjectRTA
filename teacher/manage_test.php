@@ -240,6 +240,7 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                             <th style="padding:10px;">รหัสนักศึกษา</th>
                             <th style="padding:10px;">คะแนน</th>
                             <th style="padding:10px;">เวลาที่ส่ง</th>
+                            <th style="padding:10px;">Action</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody">
@@ -404,13 +405,15 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
         }
 
         function loadResults() {
+            console.log('Loading results for test:', currentTestId);
             fetch(`../api/teacher_api.php?action=get_test_results&test_id=${currentTestId}`)
                 .then(r => r.json())
                 .then(data => {
+                    console.log('Results response:', data);
                     if (data.success) {
                         const tbody = document.getElementById('resultsBody');
                         if (data.results.length === 0) {
-                            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">ยังไม่มีผู้ส่งคำตอบ</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">ยังไม่มีผู้ส่งคำตอบ (No results found)</td></tr>';
                             return;
                         }
 
@@ -422,10 +425,34 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                             <td style="padding:10px;">${r.student_code || '-'}</td>
                             <td style="padding:10px; font-weight:bold;">${r.score} / ${r.total_points}</td>
                             <td style="padding:10px;">${new Date(r.submit_time).toLocaleString('th-TH')}</td>
+                            <td style="padding:10px;">
+                                <button onclick="deleteAttempt(${r.id})" class="btn btn-secondary btn-sm" style="color:red; border-color:red; padding:4px 8px; font-size:12px;">Reset</button>
+                            </td>
                         </tr>
                         `;
                         });
                         tbody.innerHTML = html;
+                    }
+                });
+        }
+
+        function deleteAttempt(id) {
+            if (!confirm('ต้องการล้างผลการสอบของนักเรียนคนนี้? นักเรียนจะต้องทำแบบทดสอบใหม่')) return;
+
+            const fd = new FormData();
+            fd.append('attempt_id', id);
+
+            fetch('../api/teacher_api.php?action=delete_student_attempt', {
+                method: 'POST',
+                body: fd
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('รีเซ็ตเรียบร้อย');
+                        loadResults();
+                    } else {
+                        alert('Error: ' + data.message);
                     }
                 });
         }

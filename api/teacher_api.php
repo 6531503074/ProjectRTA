@@ -3,6 +3,7 @@ session_start();
 include "../config/db.php";
 
 header('Content-Type: application/json');
+error_reporting(0); // Suppress warnings to avoid breaking JSON
 
 // Check authentication
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'teacher') {
@@ -121,11 +122,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $sql = "
             SELECT 
                 sta.*,
-                u.name as student_name,
-                u.code as student_code,
+                COALESCE(u.name, 'Unknown User') as student_name,
+                u.email as student_code,
                 u.avatar
             FROM student_test_attempts sta
-            INNER JOIN users u ON sta.student_id = u.id
+            LEFT JOIN users u ON sta.student_id = u.id
             WHERE sta.test_id = ?
             ORDER BY sta.submit_time DESC
         ";
@@ -138,6 +139,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         while ($row = $res->fetch_assoc()) {
             $results[] = $row;
         }
+
+        // Debugging handled via response
+        // $log = ...
+
         success(['results' => $results]);
     }
 }
@@ -345,6 +350,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             $conn->rollback();
             error('Database error: ' . $e->getMessage());
+        }
+    }
+
+    // --- DELETE STUDENT ATTEMPT (RESET) ---
+    elseif ($action === 'delete_student_attempt') {
+        $attempt_id = (int) ($_POST['attempt_id'] ?? 0);
+        if ($attempt_id <= 0)
+            error('Invalid attempt ID');
+
+        // Check ownership
+        $check = $conn->prepare("
+            SELECT sta.id 
+            FROM student_test_attempts sta
+            INNER JOIN course_tests t ON sta.test_id = t.id
+            INNER JOIN courses c ON t.course_id = c.id
+            WHERE sta.id = ? AND c.teacher_id = ?
+        ");
+        $check->bind_param("ii", $attempt_id, $teacher_id);
+        $check->execute();
+        if ($check->get_result()->num_rows === 0)
+            error('Access denied or not found');
+
+        $conn->begin_transaction();
+        try {
+            // Delete answers first (though cascade might handle it)
+            $del_ans = $conn->prepare("DELETE FROM student_test_answers WHERE attempt_id = ?");
+            $del_ans->bind_param("i", $attempt_id);
+            $del_ans->execute();
+
+            // Delete attempt
+            $del_att = $conn->prepare("DELETE FROM student_test_attempts WHERE id = ?");
+            $del_att->bind_param("i", $attempt_id);
+            $del_att->execute();
+
+            $conn->commit();
+            success();
+        } catch (Exception $e) {
+            $conn->rollback();
+            error('Delete failed: ' . $e->getMessage());
         }
     }
 
