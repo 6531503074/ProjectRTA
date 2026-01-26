@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 26, 2026 at 10:55 AM
+-- Generation Time: Jan 26, 2026 at 01:17 PM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- PHP Version: 8.1.25
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `online_study`
+-- Database: `online_classroom`
 --
 
 -- --------------------------------------------------------
@@ -269,6 +269,23 @@ INSERT INTO `course_students` (`id`, `course_id`, `student_id`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `course_tests`
+--
+
+CREATE TABLE `course_tests` (
+  `id` int(11) NOT NULL,
+  `course_id` int(11) NOT NULL,
+  `test_type` enum('pre','post') NOT NULL,
+  `is_active` tinyint(1) DEFAULT 0,
+  `time_limit_minutes` int(11) DEFAULT 0,
+  `shuffle_questions` tinyint(1) DEFAULT 0,
+  `shuffle_answers` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `group_chats`
 --
 
@@ -357,6 +374,62 @@ CREATE TABLE `pinned_courses` (
   `course_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_test_answers`
+--
+
+CREATE TABLE `student_test_answers` (
+  `id` int(11) NOT NULL,
+  `attempt_id` int(11) NOT NULL,
+  `question_id` int(11) NOT NULL,
+  `selected_answer_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_test_attempts`
+--
+
+CREATE TABLE `student_test_attempts` (
+  `id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `test_id` int(11) NOT NULL,
+  `start_time` datetime DEFAULT NULL,
+  `submit_time` datetime DEFAULT NULL,
+  `score` int(11) DEFAULT 0,
+  `total_points` int(11) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `test_answers`
+--
+
+CREATE TABLE `test_answers` (
+  `id` int(11) NOT NULL,
+  `question_id` int(11) NOT NULL,
+  `answer_text` text NOT NULL,
+  `is_correct` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `test_questions`
+--
+
+CREATE TABLE `test_questions` (
+  `id` int(11) NOT NULL,
+  `test_id` int(11) NOT NULL,
+  `question_text` text NOT NULL,
+  `points` int(11) DEFAULT 1,
+  `order_index` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -461,6 +534,13 @@ ALTER TABLE `course_students`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `course_tests`
+--
+ALTER TABLE `course_tests`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_course_test` (`course_id`,`test_type`);
+
+--
 -- Indexes for table `group_chats`
 --
 ALTER TABLE `group_chats`
@@ -491,6 +571,36 @@ ALTER TABLE `pinned_courses`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_pin` (`course_id`,`student_id`),
   ADD KEY `student_id` (`student_id`);
+
+--
+-- Indexes for table `student_test_answers`
+--
+ALTER TABLE `student_test_answers`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `attempt_id` (`attempt_id`),
+  ADD KEY `question_id` (`question_id`);
+
+--
+-- Indexes for table `student_test_attempts`
+--
+ALTER TABLE `student_test_attempts`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `student_id` (`student_id`),
+  ADD KEY `test_id` (`test_id`);
+
+--
+-- Indexes for table `test_answers`
+--
+ALTER TABLE `test_answers`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `question_id` (`question_id`);
+
+--
+-- Indexes for table `test_questions`
+--
+ALTER TABLE `test_questions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `test_id` (`test_id`);
 
 --
 -- Indexes for table `users`
@@ -558,6 +668,12 @@ ALTER TABLE `course_students`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
+-- AUTO_INCREMENT for table `course_tests`
+--
+ALTER TABLE `course_tests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `group_chats`
 --
 ALTER TABLE `group_chats`
@@ -580,6 +696,30 @@ ALTER TABLE `group_chat_messages`
 --
 ALTER TABLE `pinned_courses`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+
+--
+-- AUTO_INCREMENT for table `student_test_answers`
+--
+ALTER TABLE `student_test_answers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `student_test_attempts`
+--
+ALTER TABLE `student_test_attempts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `test_answers`
+--
+ALTER TABLE `test_answers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `test_questions`
+--
+ALTER TABLE `test_questions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -626,6 +766,12 @@ ALTER TABLE `course_materials`
   ADD CONSTRAINT `course_materials_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `course_tests`
+--
+ALTER TABLE `course_tests`
+  ADD CONSTRAINT `course_tests_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `group_chats`
 --
 ALTER TABLE `group_chats`
@@ -652,6 +798,32 @@ ALTER TABLE `group_chat_messages`
 ALTER TABLE `pinned_courses`
   ADD CONSTRAINT `pinned_courses_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `pinned_courses_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `student_test_answers`
+--
+ALTER TABLE `student_test_answers`
+  ADD CONSTRAINT `student_test_answers_ibfk_1` FOREIGN KEY (`attempt_id`) REFERENCES `student_test_attempts` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `student_test_answers_ibfk_2` FOREIGN KEY (`question_id`) REFERENCES `test_questions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `student_test_attempts`
+--
+ALTER TABLE `student_test_attempts`
+  ADD CONSTRAINT `student_test_attempts_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `student_test_attempts_ibfk_2` FOREIGN KEY (`test_id`) REFERENCES `course_tests` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `test_answers`
+--
+ALTER TABLE `test_answers`
+  ADD CONSTRAINT `test_answers_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `test_questions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `test_questions`
+--
+ALTER TABLE `test_questions`
+  ADD CONSTRAINT `test_questions_ibfk_1` FOREIGN KEY (`test_id`) REFERENCES `course_tests` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
