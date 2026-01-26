@@ -19,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // Validate email format
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error_message = "Invalid email format";
+        $error_message = "รูปแบบอีเมลไม่ถูกต้อง";
     } else {
         // Use prepared statement to prevent SQL injection
         $stmt = $conn->prepare("SELECT id, email, password, role, status, name, avatar, rank, position, affiliation FROM users WHERE email = ?");
@@ -31,7 +31,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if ($user && password_verify($password, $user["password"])) {
             // Check if account is active (optional)
             if (isset($user["status"]) && $user["status"] === "inactive") {
-                $error_message = "Your account has been deactivated";
+                $error_message = "บัญชีของคุณถูกระงับการใช้งาน";
             } else {
                 // Regenerate session ID to prevent session fixation
                 session_regenerate_id(true);
@@ -58,7 +58,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         } else {
             // Generic error message to prevent user enumeration
-            $error_message = "Invalid email or password";
+            $error_message = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
 
             // Optional: Log failed login attempts
             // error_log("Failed login attempt for email: " . $email);
@@ -70,13 +70,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 
 <head>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Cyber Security Learning Platform</title>
+    <title>เข้าสู่ระบบ - Cyber Security Learning Platform</title>
     <style>
         * {
             margin: 0;
@@ -85,13 +85,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Added Sarabun for Thai */
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
+        /* Import Thai font */
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
 
         .login-container {
             background: white;
@@ -126,6 +129,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             border-radius: 5px;
             font-size: 14px;
             transition: border-color 0.3s;
+            font-family: 'Sarabun', sans-serif;
         }
 
         input:focus {
@@ -144,6 +148,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s;
+            font-family: 'Sarabun', sans-serif;
         }
 
         button:hover {
@@ -203,7 +208,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <body>
     <div class="login-container">
-        <h2>🔒 Secure Login</h2>
+        <h2>🔒 เข้าสู่ระบบ</h2>
 
         <?php if ($error_message): ?>
             <div class="error-message"><?php echo htmlspecialchars($error_message); ?></div>
@@ -211,25 +216,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <form method="POST" action="">
             <div class="form-group">
-                <label for="email">Email Address</label>
+                <label for="email">อีเมล</label>
                 <input
                     type="email"
                     id="email"
                     name="email"
-                    placeholder="Enter your email"
+                    placeholder="กรอกอีเมลของคุณ"
                     required
                     value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
             </div>
 
             <div class="form-group password-group">
-                <label for="password">Password</label>
+                <label for="password">รหัสผ่าน</label>
 
                 <div class="password-wrapper">
                     <input
                         type="password"
                         id="password"
                         name="password"
-                        placeholder="Enter your password"
+                        placeholder="กรอกรหัสผ่านของคุณ"
                         required>
 
                     <i class="fa-solid fa-eye toggle-password" id="togglePassword"></i>
@@ -252,11 +257,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             </script>
 
 
-            <button type="submit">Login</button>
+            <button type="submit">เข้าสู่ระบบ</button>
         </form>
 
         <div class="links">
-            <a href="../auth/register.php">Don't have an account? Register</a><br>
+            <a href="../auth/register.php">ยังไม่มีบัญชีผู้ใช้? ลงทะเบียน</a><br>
             <!-- <a href="../forgot-password.php">Forgot Password?</a> -->
         </div>
     </div>
