@@ -6,7 +6,7 @@ header('Content-Type: application/json');
 
 // Check authentication
 if (!isset($_SESSION["user"]) || $_SESSION["user"]["role"] !== "student") {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    echo json_encode(['success' => false, 'message' => 'ไม่สามารถส่งงานได้']);
     exit();
 }
 
@@ -18,7 +18,7 @@ $submission_text = isset($_POST['submission_text']) ? trim($_POST['submission_te
 
 // Validate assignment ID
 if ($assignment_id <= 0) {
-    echo json_encode(['success' => false, 'message' => 'Invalid assignment ID']);
+    echo json_encode(['success' => false, 'message' => 'ไม่พบงานที่ต้องการส่ง']);
     exit();
 }
 
@@ -33,7 +33,7 @@ $check_stmt->execute();
 $result = $check_stmt->get_result();
 
 if ($result->num_rows == 0) {
-    echo json_encode(['success' => false, 'message' => 'Assignment not found or access denied']);
+    echo json_encode(['success' => false, 'message' => 'ไม่พบงานที่ต้องการส่ง']);
     exit();
 }
 
@@ -50,14 +50,14 @@ function handleFileUpload($student_id, $assignment_id, $old_file_path = null) {
     // Create directory if it doesn't exist
     if (!file_exists($upload_dir)) {
         if (!mkdir($upload_dir, 0755, true)) {
-            return ['success' => false, 'message' => 'Failed to create upload directory'];
+            return ['success' => false, 'message' => 'ไม่สามารถสร้างโฟลเดอร์อัปโหลดได้'];
         }
     }
     
     // Validate file size (max 10MB)
     $max_size = 10 * 1024 * 1024;
     if ($_FILES['submission_file']['size'] > $max_size) {
-        return ['success' => false, 'message' => 'File too large. Maximum size is 10MB'];
+        return ['success' => false, 'message' => 'ไฟล์ใหญ่เกินไป สูงสุด 10MB'];
     }
     
     // Validate file extension
@@ -65,7 +65,7 @@ function handleFileUpload($student_id, $assignment_id, $old_file_path = null) {
     $allowed_extensions = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar', 'ppt', 'pptx', 'xls', 'xlsx'];
     
     if (!in_array($file_extension, $allowed_extensions)) {
-        return ['success' => false, 'message' => 'Invalid file type. Allowed: ' . implode(', ', $allowed_extensions)];
+        return ['success' => false, 'message' => 'ประเภทไฟล์ไม่ถูกต้อง อนุญาต: ' . implode(', ', $allowed_extensions)];
     }
     
     // Delete old file if exists and we're replacing it
@@ -81,7 +81,7 @@ function handleFileUpload($student_id, $assignment_id, $old_file_path = null) {
     if (move_uploaded_file($_FILES['submission_file']['tmp_name'], $target_file)) {
         return ['success' => true, 'file_path' => "uploads/submissions/" . $file_name];
     } else {
-        return ['success' => false, 'message' => 'Failed to upload file'];
+        return ['success' => false, 'message' => 'ไม่สามารถอัปโหลดไฟล์ได้'];
     }
 }
 
@@ -98,7 +98,7 @@ if ($is_edit && $submission_id > 0) {
     $verify_result = $verify_stmt->get_result();
     
     if ($verify_result->num_rows == 0) {
-        echo json_encode(['success' => false, 'message' => 'Submission not found or access denied']);
+        echo json_encode(['success' => false, 'message' => 'ไม่พบการส่งงาน']);
         exit();
     }
     
@@ -106,7 +106,7 @@ if ($is_edit && $submission_id > 0) {
     
     // Prevent editing graded submissions
     if ($existing_submission['grade'] !== null) {
-        echo json_encode(['success' => false, 'message' => 'Cannot edit graded submission. Your submission has already been graded.']);
+        echo json_encode(['success' => false, 'message' => 'ไม่สามารถแก้ไขงานที่ได้รับการตรวจผล']);
         exit();
     }
     
@@ -122,7 +122,7 @@ if ($is_edit && $submission_id > 0) {
     
     // Validate that at least one submission method is provided
     if (empty($submission_text) && empty($file_path)) {
-        echo json_encode(['success' => false, 'message' => 'Please provide submission text or upload a file']);
+        echo json_encode(['success' => false, 'message' => 'กรุณาให้ข้อความหรืออัปโหลดไฟล์']);
         exit();
     }
     
@@ -138,12 +138,12 @@ if ($is_edit && $submission_id > 0) {
     if ($update_stmt->execute()) {
         echo json_encode([
             'success' => true, 
-            'message' => 'Submission updated successfully! Your changes have been saved.',
+            'message' => 'การส่งงานถูกต้อง',
             'submission_id' => $submission_id,
             'is_edit' => true
         ]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Update failed: ' . $conn->error]);
+        echo json_encode(['success' => false, 'message' => 'การส่งงานไม่ถูกต้อง']);
     }
     
 // ==================== NEW SUBMISSION MODE ====================
@@ -160,9 +160,9 @@ if ($is_edit && $submission_id > 0) {
     if ($existing_result->num_rows > 0) {
         $existing = $existing_result->fetch_assoc();
         if ($existing['grade'] !== null) {
-            echo json_encode(['success' => false, 'message' => 'This assignment has already been graded. You cannot submit again.']);
+            echo json_encode(['success' => false, 'message' => 'งานนี้ได้รับการตรวจผลแล้ว คุณไม่สามารถส่งงานอีกครั้ง']);
         } else {
-            echo json_encode(['success' => false, 'message' => 'You have already submitted this assignment. Please use the Edit button to modify your submission.']);
+            echo json_encode(['success' => false, 'message' => 'คุณได้ส่งงานแล้ว กรุณาใช้ปุ่มแก้ไขเพื่อแก้ไขงาน']);
         }
         exit();
     }
@@ -179,7 +179,7 @@ if ($is_edit && $submission_id > 0) {
     
     // Validate that at least one submission method is provided
     if (empty($submission_text) && empty($file_path)) {
-        echo json_encode(['success' => false, 'message' => 'Please provide submission text or upload a file']);
+        echo json_encode(['success' => false, 'message' => 'กรุณาให้ข้อความหรืออัปโหลดไฟล์']);
         exit();
     }
     
@@ -193,7 +193,7 @@ if ($is_edit && $submission_id > 0) {
     if ($insert_stmt->execute()) {
         echo json_encode([
             'success' => true, 
-            'message' => 'Assignment submitted successfully! Your submission has been recorded.',
+            'message' => 'การส่งงานถูกต้อง',
             'submission_id' => $conn->insert_id,
             'is_edit' => false
         ]);
@@ -202,7 +202,7 @@ if ($is_edit && $submission_id > 0) {
         if ($file_path && file_exists("../" . $file_path)) {
             unlink("../" . $file_path);
         }
-        echo json_encode(['success' => false, 'message' => 'Submission failed: ' . $conn->error]);
+        echo json_encode(['success' => false, 'message' => 'การส่งงานไม่ถูกต้อง']);
     }
 }
 

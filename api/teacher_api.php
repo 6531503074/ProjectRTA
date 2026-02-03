@@ -353,6 +353,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- DELETE BULK TEST QUESTIONS ---
+    elseif ($action === 'delete_bulk_test_questions') {
+        $ids = $_POST['question_ids'] ?? [];
+        if (!is_array($ids) || empty($ids)) {
+            error('No questions selected');
+        }
+
+        // Sanitize IDs
+        $ids = array_map('intval', $ids);
+        $ids = array_filter($ids, function($id) { return $id > 0; });
+
+        if (empty($ids)) error('Invalid question IDs');
+
+        // Verify ownership (Check if at least one belongs to teacher? Or verify all?)
+        // Safer to verify all or just delete WHERE id IN (...) AND test_id IN (SELECT id FROM tests WHERE course_id IN (SELECT id FROM courses WHERE teacher_id = ?))
+        // This ensures we only delete questions owned by this teacher.
+        
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = str_repeat('i', count($ids));
+        
+        // Build query to verify or just directly delete with join? 
+        // Direct delete with JOIN is supported in MySQL.
+        /*
+           DELETE q, a 
+           FROM test_questions q
+           LEFT JOIN test_answers a ON a.question_id = q.id
+           INNER JOIN course_tests t ON q.test_id = t.id
+           INNER JOIN courses c ON t.course_id = c.id
+           WHERE q.id IN (...) AND c.teacher_id = ?
+        */
+        // Note: DELETE with multiple tables syntax: DELETE q, a FROM ...
+        // But simpler to just delete questions and let foreign keys or second query handle answers?
+        // We do manual delete of answers usually.
+
+        // 1. Get valid IDs that belong to teacher
+        $sql = "
+            SELECT q.id 
+            FROM test_questions q
+            INNER JOIN course_tests t ON q.test_id = t.id
+            INNER JOIN courses c ON t.course_id = c.id
+            WHERE c.teacher_id = ? AND q.id IN ($placeholders)
+        ";
+        
+        $stmt = $conn->prepare($sql);
+        $params = array_merge([$teacher_id], $ids);
+        $stmt->bind_param("i" . $types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        $valid_ids = [];
+        while ($row = $res->fetch_assoc()) {
+            $valid_ids[] = $row['id'];
+        }
+        
+        if (empty($valid_ids)) {
+            error('No valid questions found to delete (Permission denied or not found)');
+        }
+
+        // Delete valid IDs
+        $conn->begin_transaction();
+        try {
+            $ph = implode(',', array_fill(0, count($valid_ids), '?'));
+            $types_v = str_repeat('i', count($valid_ids));
+
+            // Delete answers
+            $del_a = $conn->prepare("DELETE FROM test_answers WHERE question_id IN ($ph)");
+            $del_a->bind_param($types_v, ...$valid_ids);
+            $del_a->execute();
+
+            // Delete questions
+            $del_q = $conn->prepare("DELETE FROM test_questions WHERE id IN ($ph)");
+            $del_q->bind_param($types_v, ...$valid_ids);
+            $del_q->execute();
+
+            $conn->commit();
+            success(['deleted_count' => count($valid_ids)]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            error('Database error: ' . $e->getMessage());
+        }
+    }
+
     // --- DELETE STUDENT ATTEMPT (RESET) ---
     elseif ($action === 'delete_student_attempt') {
         $attempt_id = (int) ($_POST['attempt_id'] ?? 0);
@@ -436,6 +518,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $conn->prepare("UPDATE courses SET title = ?, description = ?, course_level = ? WHERE id = ?");
         $stmt->bind_param("sssi", $title, $description, $course_level, $id);
+
+        if ($stmt->execute()) {
+            success();
+        } else {
+            error('Database error: ' . $stmt->error);
+        }
+    }
+
+    // --- CREATE ANNOUNCEMENT ---
+    elseif ($action === 'create_announcement') {
+        $course_id = (int) ($_POST['course_id'] ?? 0);
+        $content = trim($_POST['content'] ?? '');
+
+        if ($course_id <= 0) error('Invalid course ID');
+        if ($content === '') error('Content is required');
+
+        // Check ownership
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
+        $check->bind_param("ii", $course_id, $teacher_id);
+        $check->execute();
+        if ($check->get_result()->num_rows === 0) {
+            error('Course not found or permission denied');
+        }
+
+        $stmt = $conn->prepare("INSERT INTO announcements (course_id, content) VALUES (?, ?)");
+        $stmt->bind_param("is", $course_id, $content);
+
+        if ($stmt->execute()) {
+            success(['id' => $stmt->insert_id]);
+        } else {
+            error('Database error: ' . $stmt->error);
+        }
+    }
+
+    // --- UPDATE ANNOUNCEMENT ---
+    elseif ($action === 'update_announcement') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $content = trim($_POST['content'] ?? '');
+
+        if ($id <= 0) error('Invalid announcement ID');
+        if ($content === '') error('Content is required');
+
+        // Check ownership via course
+        $check = $conn->prepare("
+            SELECT a.id 
+            FROM announcements a 
+            INNER JOIN courses c ON a.course_id = c.id 
+            WHERE a.id = ? AND c.teacher_id = ?
+        ");
+        $check->bind_param("ii", $id, $teacher_id);
+        $check->execute();
+        if ($check->get_result()->num_rows === 0) {
+            error('Announcement not found or permission denied');
+        }
+
+        $stmt = $conn->prepare("UPDATE announcements SET content = ? WHERE id = ?");
+        $stmt->bind_param("si", $content, $id);
+
+        if ($stmt->execute()) {
+            success();
+        } else {
+            error('Database error: ' . $stmt->error);
+        }
+    }
+
+    // --- DELETE ANNOUNCEMENT ---
+    elseif ($action === 'delete_announcement') {
+        $id = (int) ($_POST['id'] ?? 0);
+
+        if ($id <= 0) error('Invalid announcement ID');
+
+        // Check ownership via course
+        $check = $conn->prepare("
+            SELECT a.id 
+            FROM announcements a 
+            INNER JOIN courses c ON a.course_id = c.id 
+            WHERE a.id = ? AND c.teacher_id = ?
+        ");
+        $check->bind_param("ii", $id, $teacher_id);
+        $check->execute();
+        if ($check->get_result()->num_rows === 0) {
+            error('Announcement not found or permission denied');
+        }
+
+        $stmt = $conn->prepare("DELETE FROM announcements WHERE id = ?");
+        $stmt->bind_param("i", $id);
 
         if ($stmt->execute()) {
             success();

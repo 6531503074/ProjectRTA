@@ -20,7 +20,8 @@ $courses_count = $courses_stmt->get_result()->fetch_assoc()['total'];
 // Get pending assignments count
 $assignments_query = "SELECT COUNT(*) as total FROM assignments a 
                      INNER JOIN course_students cs ON a.course_id = cs.course_id 
-                     WHERE cs.student_id = ? AND a.due_date >= CURDATE()";
+                     LEFT JOIN assignment_submissions s ON a.id = s.assignment_id AND s.student_id = cs.student_id
+                     WHERE cs.student_id = ? AND a.due_date >= CURDATE() AND s.id IS NULL";
 $assignments_stmt = $conn->prepare($assignments_query);
 $assignments_stmt->bind_param("i", $student_id);
 $assignments_stmt->execute();
@@ -405,7 +406,6 @@ $recent_announcements = $recent_announcements_stmt->get_result();
         <div class="card">
             <div class="card-header">
                 <h2>หลักสูตรของฉัน</h2>
-                <a href="courses.php">ดูทั้งหมด →</a>
             </div>
 
             <?php if ($enrolled_courses->num_rows > 0): ?>
@@ -433,7 +433,7 @@ $recent_announcements = $recent_announcements_stmt->get_result();
             <div class="card">
                 <div class="card-header">
                     <h2>งานที่กำหนดส่งกำลังจะมาถึง</h2>
-                    <a href="assignments.php">ดูทั้งหมด →</a>
+                   
                 </div>
 
                 <?php if ($upcoming_assignments->num_rows > 0): ?>
@@ -447,10 +447,10 @@ $recent_announcements = $recent_announcements_stmt->get_result();
                             <h4><?php echo htmlspecialchars($assignment['title']); ?></h4>
                             <div class="course-name"><?php echo htmlspecialchars($assignment['course_title']); ?></div>
                             <div class="due-date">วันที่: <?php 
-                                $date = DateTime::createFromFormat('Y-m-d', $assignment['due_date']);
-                                $months_th = ['', 'มค.', 'กพ.', 'มีค.', 'เมย.', 'พค.', 'มิย.', 'กค.', 'สค.', 'กันย.', 'ตค.', 'พย.', 'ธค.'];
-                                $day = $date->format('d');
-                                $month = $months_th[(int)$date->format('m')];
+                                $date = new DateTime($assignment['due_date']);
+                                $months_th = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                                $day = $date->format('j');
+                                $month = $months_th[(int)$date->format('n')];
                                 $year = (int)$date->format('Y') + 543;
                                 echo "$day $month $year";
                             ?></div>
@@ -468,19 +468,25 @@ $recent_announcements = $recent_announcements_stmt->get_result();
             <div class="card">  
                 <div class="card-header">
                     <h2>ประกาศล่าสุด</h2>
-                    <a href="announcements.php">ดูทั้งหมด →</a>
+                  
                 </div>
 
                 <?php if ($recent_announcements->num_rows > 0): ?>
                     <?php while ($announcement = $recent_announcements->fetch_assoc()): ?>
                         <div class="announcement-item">
                             <div class="course-name"><?php echo htmlspecialchars($announcement['course_title']); ?></div>
-                            <p><?php echo htmlspecialchars($announcement['content']); ?></p>
+                            <p><?php 
+                                $content = htmlspecialchars($announcement['content']);
+                                // Pattern to find URLs
+                                $pattern = '/(https?:\/\/[^\s]+)/';
+                                // Replace with <a> tag
+                                echo preg_replace($pattern, '<a href="$1" target="_blank">$1</a>', $content); 
+                            ?></p>
                             <div class="time"><?php 
-                                $date = DateTime::createFromFormat('Y-m-d H:i:s', $announcement['created_at']);
-                                $months_th = ['', 'มค.', 'กพ.', 'มีค.', 'เมย.', 'พค.', 'มิย.', 'กค.', 'สค.', 'กันย.', 'ตค.', 'พย.', 'ธค.'];
-                                $day = $date->format('d');
-                                $month = $months_th[(int)$date->format('m')];
+                                $date = new DateTime($announcement['created_at']);
+                                $months_th = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                                $day = $date->format('j');
+                                $month = $months_th[(int)$date->format('n')];
                                 $year = (int)$date->format('Y') + 543;
                                 echo "$day $month $year";
                             ?></div>

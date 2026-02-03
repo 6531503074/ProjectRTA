@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Database connection
-$conn = new mysqli("localhost", "root", "", "online_classroom");
+$conn = new mysqli("localhost", "root", "", "online_study");
 
 // Check connection
 if ($conn->connect_error) {

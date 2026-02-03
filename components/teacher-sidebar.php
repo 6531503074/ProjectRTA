@@ -328,6 +328,10 @@ $teacher_courses = $courses_stmt->get_result();
                 กำหนดสิทธิ์ผู้ใช้
             </a>
 
+         <a href="notes.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'notes.php' ? 'active' : '' ?>">
+                ประกาศ
+            </a>
+
         </div>
 
         <div class="nav-section">
@@ -618,12 +622,12 @@ $teacher_courses = $courses_stmt->get_result();
 
 <div class="floating-chat-window" id="floatingChat">
     <div class="chat-window-header">
-        <h3>Group Chats</h3>
+        <h3>แชทกลุ่ม</h3>
         <span class="chat-window-close" onclick="toggleFloatingChat()">×</span>
     </div>
     <div class="chat-window-tabs">
-        <div class="chat-tab active" onclick="switchChatTab('groups')">My Groups</div>
-        <div class="chat-tab" onclick="switchChatTab('all')">All Groups</div>
+        <div class="chat-tab active" onclick="switchChatTab('groups')">กลุ่มของฉัน</div>
+        <div class="chat-tab" onclick="switchChatTab('all')">กลุ่มทั้งหมด</div>
     </div>
     <div class="chat-window-content" id="chatContent">
         <!-- Groups will be loaded here -->

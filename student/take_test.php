@@ -144,6 +144,11 @@ if ($chk->get_result()->num_rows > 0) {
         <h2>กำลังโหลดข้อสอบ...</h2>
     </div>
 
+    <!-- Alert Warning -->
+    <div style="background: #fff5f5; border-left: 4px solid #e53e3e; padding: 15px; margin-bottom: 20px; color: #c53030; max-width: 800px; margin: 20px auto 0;">
+        <strong>คำเตือน:</strong> ห้ามออกจากหน้านี้ หรือสลับ Tab มิเช่นนั้นระบบจะส่งคำตอบทันที!
+    </div>
+
     <div class="container" id="quizContainer" style="display:none;">
         <div class="header">
             <h2 id="testTitle">แบบทดสอบ</h2>
@@ -161,6 +166,18 @@ if ($chk->get_result()->num_rows > 0) {
         const testId = <?= $test_id ?>;
         let timeLimit = 0; // minutes
         let timerInterval;
+        let isSubmitted = false;
+
+        // Auto Submit on Visibility Change (Tab Switch / Minimize)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && !isSubmitted) {
+                alert('ตรวจพบการออกจากหน้าจอ! ระบบจะส่งคำตอบอัตโนมัติ');
+                submitQuiz(null);
+            }
+        });
+
+        // Optional: Block context menu
+        document.addEventListener('contextmenu', event => event.preventDefault());
 
         // Fetch Test Data
         fetch(`../api/student_test_api.php?action=start_test&test_id=${testId}`)
@@ -235,6 +252,11 @@ if ($chk->get_result()->num_rows > 0) {
 
         function submitQuiz(e) {
             if (e) e.preventDefault();
+            if (isSubmitted) return;
+            isSubmitted = true;
+
+            // Clear timer
+            clearInterval(timerInterval);
 
             // Gather answers
             const formData = new FormData(document.getElementById('quizForm'));

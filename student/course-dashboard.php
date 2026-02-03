@@ -1104,7 +1104,11 @@ function th_date($date)
                     </div>
                     <?php while ($announcement = $announcements->fetch_assoc()): ?>
                         <div class="announcement-card">
-                            <div class="content"><?= nl2br(htmlspecialchars($announcement['content'])) ?></div>
+                            <div class="content"><?php 
+                                $content = htmlspecialchars($announcement['content']);
+                                $pattern = '/(https?:\/\/[^\s]+)/';
+                                echo nl2br(preg_replace($pattern, '<a href="$1" target="_blank">$1</a>', $content));
+                            ?></div>
                             <div class="time"><?= th_dt($announcement['created_at']) ?></div>
                         </div>
                     <?php endwhile; ?>

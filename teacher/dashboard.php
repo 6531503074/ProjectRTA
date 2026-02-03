@@ -81,6 +81,15 @@ $upcoming_assignments_stmt = $conn->prepare($upcoming_assignments_query);
 $upcoming_assignments_stmt->bind_param("i", $teacher_id);
 $upcoming_assignments_stmt->execute();
 $upcoming_assignments = $upcoming_assignments_stmt->get_result();
+$upcoming_assignments_stmt->execute();
+$upcoming_assignments = $upcoming_assignments_stmt->get_result();
+
+// Get all courses for announcement dropdown
+$all_courses_query = "SELECT id, title FROM courses WHERE teacher_id = ? ORDER BY title ASC";
+$all_courses_stmt = $conn->prepare($all_courses_query);
+$all_courses_stmt->bind_param("i", $teacher_id);
+$all_courses_stmt->execute();
+$all_courses = $all_courses_stmt->get_result();
 ?>
 
 <!DOCTYPE html>
@@ -139,12 +148,16 @@ $upcoming_assignments = $upcoming_assignments_stmt->get_result();
                 <div class="icon">📝</div>
                 <div class="label">จัดการการส่งงาน</div>
             </div>
+            <div class="quick-action-btn" onclick="openAnnouncementModal()">
+                <div class="icon">📢</div>
+                <div class="label">ประกาศ</div>
+            </div>
             <div class="quick-action-btn" onclick="window.location.href='students.php'">
                 <div class="icon">👥</div>
                 <div class="label">จัดการนักเรียน</div>
             </div>
             <div class="quick-action-btn" onclick="window.location.href='grades.php'">
-                <div class="icon">📊</div>
+                <div class="icon">�</div>
                 <div class="label">จัดการคะแนน</div>
             </div>
         </div>
@@ -288,10 +301,78 @@ $upcoming_assignments = $upcoming_assignments_stmt->get_result();
 
 
 
-    <script>
+    <!-- Announcement Modal -->
+    <div id="announcementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📢 สร้างประกาศ</h2>
+                <span class="close" onclick="closeAnnouncementModal()">&times;</span>
+            </div>
+            <form id="announcementForm" onsubmit="createAnnouncement(event)">
+                <div class="form-group">
+                    <label class="form-label">เลือกวิชา <span style="color:red">*</span></label>
+                    <select name="course_id" class="form-control" required>
+                        <option value="">-- เลือกวิชา --</option>
+                        <?php 
+                        $all_courses->data_seek(0); // Reset pointer
+                        while($c = $all_courses->fetch_assoc()): 
+                        ?>
+                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['title']) ?></option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ข้อความประกาศ <span style="color:red">*</span></label>
+                    <textarea name="content" class="form-control" rows="5" required placeholder="สิ่งที่ต้องการแจ้งให้นักเรียนทราบ (ใส่ลิงก์ได้)"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">โพสต์ประกาศ</button>
+            </form>
+        </div>
+    </div>
 
-        function gradeSubmission(submissionId) {
-            window.location.href = `grade_submission.php?id=${submissionId}`;
+    <script>
+        // Modal functions
+        function openAnnouncementModal() {
+            document.getElementById('announcementModal').classList.add('show');
+        }
+
+        function closeAnnouncementModal() {
+            document.getElementById('announcementModal').classList.remove('show');
+        }
+        
+        // Close when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('show');
+            }
+        }
+
+        function createAnnouncement(e) {
+            e.preventDefault();
+            const form = document.getElementById('announcementForm');
+            const formData = new FormData(form);
+
+            fetch('../api/teacher_api.php?action=create_announcement', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    alert('โพสต์ประกาศสำเร็จ');
+                    closeAnnouncementModal();
+                    form.reset();
+                    // Optional: reload page to see visual confirmation? 
+                    // Or just let it be. Dashboard doesn't show own announcements usually, 
+                    // but student dashboard does.
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Connection Error');
+            });
         }
 
         function gradeSubmission(submissionId) {

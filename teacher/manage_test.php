@@ -223,6 +223,15 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
 
             <div class="settings-card">
                 <h3>คำถามที่มีอยู่ในระบบ</h3>
+                <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        เลือกทั้งหมด
+                    </label>
+                    <button id="deleteSelectedBtn" onclick="deleteSelected()" class="btn btn-danger" style="display: none;">
+                        ลบที่เลือก (<span id="selectedCount">0</span>)
+                    </button>
+                </div>
                 <div id="questionsList">
                     กำลังโหลด...
                 </div>
@@ -357,14 +366,23 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                         const list = document.getElementById('questionsList');
                         if (data.questions.length === 0) {
                             list.innerHTML = '<p style="color:#aaa;">ยังไม่มีคำถาม</p>';
+                            document.getElementById('selectAll').checked = false;
+                            checkSelection();
                             return;
                         }
+
+                        // Reset header checkbox
+                        document.getElementById('selectAll').checked = false;
+                        checkSelection();
 
                         let html = '';
                         data.questions.forEach((q, idx) => {
                             html += `
                         <div style="border:1px solid #eee; padding:12px; margin-bottom:8px; border-radius:4px; position:relative;">
-                             <button onclick="deleteQuestion(${q.id})" style="position:absolute; top:10px; right:10px; color:red; border:none; background:none; cursor:pointer; font-size:16px;" title="Delete">🗑️</button>
+                             <div style="position:absolute; top:10px; right:10px; display:flex; gap:10px;">
+                                <input type="checkbox" class="q-checkbox" value="${q.id}" onchange="checkSelection()" style="transform: scale(1.2);">
+                                <button onclick="deleteQuestion(${q.id})" style="color:red; border:none; background:none; cursor:pointer; font-size:16px;" title="Delete">🗑️</button>
+                             </div>
                             <strong>${idx + 1}. ${q.question_text.replace(/\n/g, '<br>')}</strong>
                             <ul style="margin-top:8px; padding-left:20px;">
                         `;
@@ -402,6 +420,57 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                     console.error(err);
                     alert('Connection Error');
                 });
+        }
+
+        function toggleSelectAll() {
+            const isChecked = document.getElementById('selectAll').checked;
+            document.querySelectorAll('.q-checkbox').forEach(cb => cb.checked = isChecked);
+            checkSelection();
+        }
+
+        function checkSelection() {
+            const count = document.querySelectorAll('.q-checkbox:checked').length;
+            const btn = document.getElementById('deleteSelectedBtn');
+            const countSpan = document.getElementById('selectedCount');
+            
+            if (count > 0) {
+                btn.style.display = 'inline-block';
+                countSpan.innerText = count;
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        function deleteSelected() {
+            const checkboxes = document.querySelectorAll('.q-checkbox:checked');
+            if (checkboxes.length === 0) return;
+
+            if (!confirm(`ต้องการลบคำถามที่เลือก ${checkboxes.length} ข้อ?`)) return;
+
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            
+            const fd = new FormData();
+            ids.forEach(id => fd.append('question_ids[]', id)); // Send as array
+
+            fetch('../api/teacher_api.php?action=delete_bulk_test_questions', {
+                method: 'POST',
+                body: fd
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Reset select all
+                    document.getElementById('selectAll').checked = false;
+                    document.getElementById('deleteSelectedBtn').style.display = 'none';
+                    loadQuestions();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Connection Error');
+            });
         }
 
         function loadResults() {
