@@ -1126,6 +1126,138 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             error('Database error: ' . $stmt->error);
         }
+    }
+
+    // --- DELETE USER ---
+    elseif ($action === 'delete_user') {
+        $user_id = (int) ($_POST['user_id'] ?? 0);
+
+        if ($user_id <= 0)
+            error('Invalid user ID');
+
+        // Prevent deleting self
+        if ($user_id === $teacher_id) {
+            error('คุณไม่สามารถลบบัญชีของตัวเองได้');
+        }
+
+        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+        $stmt->bind_param("i", $user_id);
+
+        if ($stmt->execute()) {
+            success();
+        } else {
+            error('Database error: ' . $stmt->error);
+        }
+    }
+
+    // --- UPDATE PROFILE ---
+    elseif ($action === 'update_profile') {
+        $name = trim($_POST['name'] ?? '');
+        $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+        $rank = trim($_POST['rank'] ?? '');
+        $position = trim($_POST['position'] ?? '');
+        $affiliation = trim($_POST['affiliation'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $password = $_POST['new_password'] ?? '';
+        
+        if (empty($name) || empty($email)) {
+            error('กรุณากรอกชื่อและอีเมล');
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            error('รูปแบบอีเมลไม่ถูกต้อง');
+        }
+
+        // Check if email already exists for other user
+        $check_stmt = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+        $check_stmt->bind_param("si", $email, $teacher_id);
+        $check_stmt->execute();
+        if ($check_stmt->get_result()->num_rows > 0) {
+            error('อีเมลนี้ถูกใช้งานแล้ว');
+        }
+
+        // Handle Avatar Upload
+        $avatar_sql = "";
+        $params = [];
+        $types = "";
+        
+        if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+            $allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/gif"];
+            $max_size = 2 * 1024 * 1024; // 2MB
+            
+            $file_type = $_FILES['avatar']['type'];
+            $file_size = $_FILES['avatar']['size'];
+            
+            if (!in_array($file_type, $allowed_types)) {
+                error('อนุญาตเฉพาะไฟล์รูปภาพ (JPG, PNG, GIF)');
+            }
+            if ($file_size > $max_size) {
+                error('ขนาดไฟล์ต้องไม่เกิน 2MB');
+            }
+
+            $ext = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
+            $new_filename = uniqid() . "_" . time() . "." . $ext;
+            $upload_dir = "../uploads/avatars/";
+            
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            
+            if (move_uploaded_file($_FILES['avatar']['tmp_name'], $upload_dir . $new_filename)) {
+                $avatar_path = "uploads/avatars/" . $new_filename;
+                
+                // Delete old avatar if exists and strictly local
+                if (!empty($user['avatar']) && file_exists("../" . $user['avatar'])) {
+                    unlink("../" . $user['avatar']);
+                }
+                
+                $avatar_sql = ", avatar = ?";
+                $params[] = $avatar_path;
+                $types .= "s";
+                
+                // Update session immediately for avatar
+                $_SESSION['user']['avatar'] = $avatar_path;
+            }
+        }
+
+        // Build Query
+        $sql = "UPDATE users SET name = ?, email = ?, rank = ?, position = ?, affiliation = ?, phone = ?" . $avatar_sql;
+        $base_params = [$name, $email, $rank, $position, $affiliation, $phone];
+        $base_types = "ssssss";
+        
+        // Add Password if provided
+        if (!empty($password)) {
+            if (strlen($password) < 8) {
+                error('รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร');
+            }
+            $sql .= ", password = ?";
+            $params[] = password_hash($password, PASSWORD_DEFAULT);
+            $types .= "s";
+        }
+
+        $sql .= " WHERE id = ?";
+        
+        // Combine all params
+        // Order: name, email, rank, position, affiliation, phone, [avatar], [password], id
+        $final_params = array_merge($base_params, $params, [$teacher_id]);
+        $final_types = $base_types . $types . "i";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($final_types, ...$final_params);
+        
+        if ($stmt->execute()) {
+            // Update Session Data
+            $_SESSION['user']['name'] = $name;
+            $_SESSION['user']['email'] = $email;
+            $_SESSION['user']['rank'] = $rank;
+            $_SESSION['user']['position'] = $position;
+            $_SESSION['user']['affiliation'] = $affiliation;
+            $_SESSION['user']['phone'] = $phone;
+            
+            success();
+        } else {
+            error('Database error: ' . $stmt->error);
+        }
     } else {
         error('Invalid action');
     }

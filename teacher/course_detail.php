@@ -212,10 +212,12 @@ $materials = $mat_stmt->get_result();
                 </div>
             </div>
 
-            <!-- Tests Column -->
             <div class="card">
                 <div class="card-header">
                     <h2>แบบทดสอบ (Tests)</h2>
+                    <a href="../api/export_scores.php?course_id=<?= $course_id ?>" target="_blank" class="btn btn-sm btn-outline-success">
+                        📊 Export Scores
+                    </a>
                 </div>
                 <div class="test-list" style="padding: 10px;">
                     <div class="test-item"

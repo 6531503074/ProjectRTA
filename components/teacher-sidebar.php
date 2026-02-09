@@ -323,6 +323,10 @@ $teacher_courses = $courses_stmt->get_result();
                 แดชบอร์ด
             </a>
 
+            <a href="profile.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'profile.php' ? 'active' : '' ?>">
+                โปรไฟล์
+            </a>
+
 
             <a href="user_permissions.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'user_permissions.php' ? 'active' : '' ?>">
                 กำหนดสิทธิ์ผู้ใช้

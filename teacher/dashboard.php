@@ -157,7 +157,7 @@ $all_courses = $all_courses_stmt->get_result();
                 <div class="label">จัดการนักเรียน</div>
             </div>
             <div class="quick-action-btn" onclick="window.location.href='grades.php'">
-                <div class="icon">�</div>
+                <div class="icon">💯</div>
                 <div class="label">จัดการคะแนน</div>
             </div>
         </div>

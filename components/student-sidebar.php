@@ -377,6 +377,7 @@ if ($stmt) {
         <div class="nav-section">
             <div class="nav-section-title">เมนู</div>
             <a href="../student/dashboard.php" class="nav-link">แดชบอร์ด</a>
+            <a href="../student/profile.php" class="nav-link">โปรไฟล์</a>
         </div>
 
         <div class="nav-section">

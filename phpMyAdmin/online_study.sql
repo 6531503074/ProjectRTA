@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 26, 2026 at 01:17 PM
+-- Generation Time: Feb 06, 2026 at 02:07 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.1.25
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `online_classroom`
+-- Database: `online_study`
 --
 
 -- --------------------------------------------------------
@@ -66,11 +66,7 @@ INSERT INTO `announcement_reads` (`id`, `announcement_id`, `student_id`, `read_a
 (27, 3, 3, '2026-01-07 07:08:23'),
 (47, 4, 1, '2026-01-07 07:26:16'),
 (56, 1, 1, '2026-01-07 08:00:24'),
-(57, 2, 1, '2026-01-07 08:00:24'),
-(203, 3, 4, '2026-01-08 08:07:57'),
-(207, 4, 4, '2026-01-08 08:10:40'),
-(208, 1, 4, '2026-01-08 08:10:41'),
-(209, 2, 4, '2026-01-08 08:10:41');
+(57, 2, 1, '2026-01-07 08:00:24');
 
 -- --------------------------------------------------------
 
@@ -204,7 +200,8 @@ INSERT INTO `courses` (`id`, `title`, `description`, `teacher_id`, `course_level
 (2, 'Database Systems', 'MySQL, ER Diagram, SQL Queries', 2, 'ขั้นเริ่มต้น'),
 (3, 'Software Engineering', 'SDLC, Agile, UML Diagrams', 2, 'ขั้นเริ่มต้น'),
 (5, 'IT', '', 5, 'ขั้นเริ่มต้น'),
-(6, 'AI', '', 5, 'ขั้นเริ่มต้น');
+(6, 'AI', '', 5, 'ขั้นเริ่มต้น'),
+(7, 'Cyber', '', 5, 'ขั้นเริ่มต้น');
 
 -- --------------------------------------------------------
 
@@ -264,7 +261,10 @@ INSERT INTO `course_students` (`id`, `course_id`, `student_id`) VALUES
 (34, 5, 1),
 (35, 5, 3),
 (36, 5, 4),
-(37, 5, 6);
+(37, 5, 6),
+(38, 7, 1),
+(39, 7, 3),
+(40, 7, 6);
 
 -- --------------------------------------------------------
 
@@ -282,6 +282,13 @@ CREATE TABLE `course_tests` (
   `shuffle_answers` tinyint(1) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `course_tests`
+--
+
+INSERT INTO `course_tests` (`id`, `course_id`, `test_type`, `is_active`, `time_limit_minutes`, `shuffle_questions`, `shuffle_answers`, `created_at`) VALUES
+(1, 6, 'pre', 1, 0, 0, 0, '2026-02-06 01:00:37');
 
 -- --------------------------------------------------------
 
@@ -389,6 +396,17 @@ CREATE TABLE `student_test_answers` (
   `selected_answer_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `student_test_answers`
+--
+
+INSERT INTO `student_test_answers` (`id`, `attempt_id`, `question_id`, `selected_answer_id`) VALUES
+(1, 1, 1, 2),
+(2, 1, 2, 7),
+(3, 1, 3, 11),
+(4, 1, 4, 14),
+(5, 1, 5, 17);
+
 -- --------------------------------------------------------
 
 --
@@ -405,6 +423,13 @@ CREATE TABLE `student_test_attempts` (
   `total_points` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `student_test_attempts`
+--
+
+INSERT INTO `student_test_attempts` (`id`, `student_id`, `test_id`, `start_time`, `submit_time`, `score`, `total_points`) VALUES
+(1, 6, 1, '2026-02-06 08:01:24', '2026-02-06 08:01:24', 5, 5);
+
 -- --------------------------------------------------------
 
 --
@@ -417,6 +442,32 @@ CREATE TABLE `test_answers` (
   `answer_text` text NOT NULL,
   `is_correct` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `test_answers`
+--
+
+INSERT INTO `test_answers` (`id`, `question_id`, `answer_text`, `is_correct`) VALUES
+(1, 1, 'สาม', 0),
+(2, 1, 'สี่', 1),
+(3, 1, '5', 0),
+(4, 1, '6', 0),
+(5, 2, 'Earth', 0),
+(6, 2, 'Venus', 0),
+(7, 2, 'Mars', 1),
+(8, 2, 'Jupiter', 0),
+(9, 3, 'Seoul', 0),
+(10, 3, 'Beijing', 0),
+(11, 3, 'Tokyo', 1),
+(12, 3, 'Bangkok', 0),
+(13, 4, 'HTML', 0),
+(14, 4, 'CSS', 1),
+(15, 4, 'JavaScript', 0),
+(16, 4, 'Python', 0),
+(17, 5, '0', 1),
+(18, 5, '32', 0),
+(19, 5, '100', 0),
+(20, 5, '-10', 0);
 
 -- --------------------------------------------------------
 
@@ -431,6 +482,17 @@ CREATE TABLE `test_questions` (
   `points` int(11) DEFAULT 1,
   `order_index` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `test_questions`
+--
+
+INSERT INTO `test_questions` (`id`, `test_id`, `question_text`, `points`, `order_index`) VALUES
+(1, 1, '2 + 2 เท่ากับเท่าไหร่?', 1, 0),
+(2, 1, 'Which planet is known as the Red Planet?Which planet is known as the Red Planet?Which planet is known as the Red Planet?Which planet is known as the Red Planet?Which planet is known as the Red Planet?Which planet is known as the Red Planet?Which planet is known as the Red Planet?', 1, 0),
+(3, 1, 'What is the capital of Japan?', 1, 0),
+(4, 1, 'Which language is primarily used for web page styling?', 1, 0),
+(5, 1, 'Water freezes at what temperature (Celsius)?', 1, 0);
 
 -- --------------------------------------------------------
 
@@ -458,13 +520,11 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `rank`, `name`, `position`, `affiliation`, `phone`, `email`, `avatar`, `password`, `role`, `courseLevel`, `status`) VALUES
-(1, 'นศท.', 'วิรศิลป์ ลิ้มธนเดชอนันต์', 'ฝึกงาน', 'กรซ.', '0994793969', '6531503074@lamduan.mfu.ac.th', 'uploads/avatars/695c804b3d0aa_1767669835.jfif', '$2y$10$eIt7X/krz1BAHBkB0oXQ6O4os4EzYCTUt0HJiafQ5pRoMV/dgKftu', 'student', 'ขั้นเริ่มต้น', 'active'),
+(1, 'นศท.', 'วิรศิลป์ ลิ้มธนเดชอนันต์', 'ฝึกงาน', 'กรซ.', '0994793969', '6531503074@lamduan.mfu.ac.th', 'uploads/avatars/695c804b3d0aa_1767669835.jfif', '$2y$10$eIt7X/krz1BAHBkB0oXQ6O4os4EzYCTUt0HJiafQ5pRoMV/dgKftu', 'student', '1', 'active'),
 (2, 'admin', 'Admin', 'admin', 'admin', '099999999', 'admin@gmail.com', 'uploads/avatars/695c8136c1345_1767670070.jfif', '$2y$10$Jfl6OJmbUjG.qILC5ngSwuSJVAMzYMm6UpKZymsEiHZnLBeLVr.La', 'teacher', 'admin', 'active'),
-(3, 'นศท.', 'อธิชา คำดี', 'PM', 'กรซ', '099789546', 'user2@gmail.com', 'uploads/avatars/695e05d611957_1767769558.jfif', '$2y$10$JV1Ex1eQTW65YzjhouBS6.F3pRLCI.WPs2vs1aPPrjbaXlNR7LOfC', 'student', 'ขั้นเริ่มต้น', 'active'),
-(4, 'ออ', 'Pee', 'ดด', 'กก', '0812345678', 'p@gmail.com', NULL, '$2y$10$ooetj4o48GAN1bpybItizuj8CiwnckYFkVG8CNIfovZvl04DuzpGm', 'student', 'ขั้นเริ่มต้น', 'active'),
-(5, 'พ.อ', 'แอนตัน ลี', 'teacher', '', '0823456789', 'aton@gmail.com', 'uploads/avatars/69671bac7d90d_1768364972.png', '$2y$10$6DmMoCx8KXJS2gZntU1n4OSBns4iIvi1H8uSztoK1.pBV84I3xfgW', 'teacher', '3', 'active'),
-(6, 'ร.อ', 'วอนบิน พัค', 'student', '', '0851234567', 'wonbin@gmail.com', 'uploads/avatars/696857090aed1_1768445705.jpg', '$2y$10$RsQ.jebvgb8awobLP1UHoeFxZB2/FI4MNSl23QgJvlsr6wgfTr9t6', 'student', '1', 'active'),
-(7, 'ร.อ', 'อิน นา', '', '', '0534567891', 'in@gmail.com', 'uploads/avatars/696ef4243c73b_1768879140.jpg', '$2y$10$6NJRc6cYYuG5lGI4dQUnH.NJWuge.1F4guucSaBR/RGPsBtPG/PSO', 'student', '3', 'active');
+(3, 'นศท.', 'อธิชา คำดี', 'PM', 'กรซ', '099789546', 'user2@gmail.com', 'uploads/avatars/695e05d611957_1767769558.jfif', '$2y$10$JV1Ex1eQTW65YzjhouBS6.F3pRLCI.WPs2vs1aPPrjbaXlNR7LOfC', 'student', '1', 'active'),
+(5, 'พ.อ', 'แอนตัน ลี', 'IT', '', '', 'aton@gmail.com', 'uploads/avatars/69843f5d9e325_1770274653.jpg', '$2y$10$6DmMoCx8KXJS2gZntU1n4OSBns4iIvi1H8uSztoK1.pBV84I3xfgW', 'teacher', '3', 'active'),
+(6, 'ร.อ', 'วอนบิน พัค', 'IT', '', '', 'wonbin@gmail.com', 'uploads/avatars/696857090aed1_1768445705.jpg', '$2y$10$RsQ.jebvgb8awobLP1UHoeFxZB2/FI4MNSl23QgJvlsr6wgfTr9t6', 'student', '1', 'active');
 
 --
 -- Indexes for dumped tables
@@ -653,7 +713,7 @@ ALTER TABLE `assignment_submissions`
 -- AUTO_INCREMENT for table `courses`
 --
 ALTER TABLE `courses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `course_materials`
@@ -665,13 +725,13 @@ ALTER TABLE `course_materials`
 -- AUTO_INCREMENT for table `course_students`
 --
 ALTER TABLE `course_students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT for table `course_tests`
 --
 ALTER TABLE `course_tests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `group_chats`
@@ -701,31 +761,31 @@ ALTER TABLE `pinned_courses`
 -- AUTO_INCREMENT for table `student_test_answers`
 --
 ALTER TABLE `student_test_answers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `student_test_attempts`
 --
 ALTER TABLE `student_test_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `test_answers`
 --
 ALTER TABLE `test_answers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `test_questions`
 --
 ALTER TABLE `test_questions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- Constraints for dumped tables

@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error_message = "รูปแบบอีเมลไม่ถูกต้อง";
     } else {
         // Use prepared statement to prevent SQL injection
-        $stmt = $conn->prepare("SELECT id, email, password, role, status, name, avatar, rank, position, affiliation FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT id, email, password, role, status, name, avatar, rank, position, affiliation, courseLevel FROM users WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -45,7 +45,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "rank" => $user["rank"],
                     "position" => $user["position"],
                     "affiliation" => $user["affiliation"],
-                    "role" => $user["role"]
+                    "role" => $user["role"],
+                    "courseLevel" => $user["courseLevel"]
                 ];
 
                 // Set session timeout (optional)
