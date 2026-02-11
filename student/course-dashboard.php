@@ -1196,7 +1196,12 @@ function th_date($date)
 
                         <?php if ($assignment['description']): ?>
                             <div style="color: #4a5568; font-size: 14px; margin-bottom: 15px; line-height: 1.6;">
-                                <?= nl2br(htmlspecialchars($assignment['description'])) ?>
+                                <?php
+                                $desc = htmlspecialchars($assignment['description']);
+                                // Auto-link URLs
+                                $desc = preg_replace('/(https?:\/\/[^\s]+)/', '<a href="$1" target="_blank" style="color: #667eea; text-decoration: underline;">$1</a>', $desc);
+                                echo nl2br($desc);
+                                ?>
                             </div>
                         <?php endif; ?>
 

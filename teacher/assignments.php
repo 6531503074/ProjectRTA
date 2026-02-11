@@ -48,8 +48,7 @@ $course_id_int = ($course_id !== '' && ctype_digit($course_id)) ? (int)$course_i
 /**
  * Load teacher courses for filter dropdown
  */
-$courses_stmt = $conn->prepare("SELECT id, title FROM courses WHERE teacher_id = ? ORDER BY title ASC");
-$courses_stmt->bind_param("i", $teacher_id);
+$courses_stmt = $conn->prepare("SELECT id, title FROM courses ORDER BY title ASC");
 $courses_stmt->execute();
 $courses_rs = $courses_stmt->get_result();
 
@@ -60,9 +59,9 @@ $courses_rs = $courses_stmt->get_result();
  * - courses: id, title, teacher_id
  * - assignment_submissions: id, assignment_id, student_id, submitted_at, grade
  */
-$where = "WHERE c.teacher_id = ?";
-$params = [$teacher_id];
-$types = "i";
+$where = "WHERE 1=1";
+$params = [];
+$types = "";
 
 if ($q !== '') {
     $where .= " AND (a.title LIKE ? OR a.description LIKE ? OR c.title LIKE ?)";
@@ -107,7 +106,9 @@ $offset = ($page - 1) * $limit;
 // Count total for pagination
 $count_sql = "SELECT COUNT(*) as total FROM assignments a INNER JOIN courses c ON a.course_id = c.id {$where}";
 $count_stmt = $conn->prepare($count_sql);
-$count_stmt->bind_param($types, ...$params);
+if (!empty($types)) {
+    $count_stmt->bind_param($types, ...$params);
+}
 $count_stmt->execute();
 $total_rows = $count_stmt->get_result()->fetch_assoc()['total'];
 $total_pages = ceil($total_rows / $limit);
@@ -133,7 +134,9 @@ $types .= "ii";
 
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param($types, ...$params);
+if (!empty($types)) {
+    $stmt->bind_param($types, ...$params);
+}
 $stmt->execute();
 $assignments = $stmt->get_result();
 
@@ -144,24 +147,22 @@ $stats_sql = "
 SELECT
   (SELECT COUNT(*)
      FROM assignments a
-     INNER JOIN courses c ON a.course_id = c.id
-     WHERE c.teacher_id = ?) AS total_assignments,
+     INNER JOIN courses c ON a.course_id = c.id) AS total_assignments,
   (SELECT COUNT(*)
      FROM assignments a
      INNER JOIN courses c ON a.course_id = c.id
-     WHERE c.teacher_id = ? AND a.due_date >= CURDATE()) AS open_assignments,
+     WHERE a.due_date >= CURDATE()) AS open_assignments,
   (SELECT COUNT(*)
      FROM assignments a
      INNER JOIN courses c ON a.course_id = c.id
-     WHERE c.teacher_id = ? AND a.due_date < CURDATE()) AS overdue_assignments,
+     WHERE a.due_date < CURDATE()) AS overdue_assignments,
   (SELECT COUNT(*)
      FROM assignment_submissions s
      INNER JOIN assignments a ON s.assignment_id = a.id
      INNER JOIN courses c ON a.course_id = c.id
-     WHERE c.teacher_id = ? AND s.grade IS NULL) AS pending_grades
+     WHERE s.grade IS NULL) AS pending_grades
 ";
 $stats_stmt = $conn->prepare($stats_sql);
-$stats_stmt->bind_param("iiii", $teacher_id, $teacher_id, $teacher_id, $teacher_id);
 $stats_stmt->execute();
 $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
     'total_assignments' => 0,
@@ -427,8 +428,8 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                             <option value="" disabled selected>เลือกหลักสูตร</option>
                             <?php
                             // โหลด courses ใหม่สำหรับ modal (กัน cursor ชี้ท้าย)
-                            $courses_stmt2 = $conn->prepare("SELECT id, title FROM courses WHERE teacher_id = ? ORDER BY title ASC");
-                            $courses_stmt2->bind_param("i", $teacher_id);
+                            // โหลด courses ใหม่สำหรับ modal (กัน cursor ชี้ท้าย)
+                            $courses_stmt2 = $conn->prepare("SELECT id, title FROM courses ORDER BY title ASC");
                             $courses_stmt2->execute();
                             $courses_rs2 = $courses_stmt2->get_result();
                             while ($c2 = $courses_rs2->fetch_assoc()):

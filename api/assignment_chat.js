@@ -159,11 +159,11 @@ class AssignmentChatManager {
                 // Update message count
                 this.updateMessageCount(assignmentId);
             } else {
-                alert(data.message || 'Failed to send message');
+                alert(data.message || 'ไม่สามารถส่งข้อความได้');
             }
         } catch (error) {
             console.error('Error sending message:', error);
-            alert('Failed to send message');
+            alert('ไม่สามารถส่งข้อความได้');
         }
     }
 

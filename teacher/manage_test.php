@@ -17,8 +17,8 @@ if ($course_id === 0 || !in_array($test_type, ['pre', 'post'])) {
 }
 
 // Get Course Info
-$course_stmt = $conn->prepare("SELECT title FROM courses WHERE id = ? AND teacher_id = ?");
-$course_stmt->bind_param("ii", $course_id, $teacher_id);
+$course_stmt = $conn->prepare("SELECT title FROM courses WHERE id = ?");
+$course_stmt->bind_param("i", $course_id);
 $course_stmt->execute();
 $course = $course_stmt->get_result()->fetch_assoc();
 

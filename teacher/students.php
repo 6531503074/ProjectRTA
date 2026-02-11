@@ -27,8 +27,7 @@ $course_id_int = ($course_id !== '' && ctype_digit($course_id)) ? (int)$course_i
 /**
  * Teacher courses (dropdown + sidebar already uses it, but we need for filter + modal)
  */
-$courses_stmt = $conn->prepare("SELECT id, title FROM courses WHERE teacher_id = ? ORDER BY title ASC");
-$courses_stmt->bind_param("i", $teacher_id);
+$courses_stmt = $conn->prepare("SELECT id, title FROM courses ORDER BY title ASC");
 $courses_stmt->execute();
 $courses_rs = $courses_stmt->get_result();
 
@@ -42,16 +41,13 @@ $stats_sql = "
 SELECT
  (SELECT COUNT(DISTINCT cs.student_id)
     FROM course_students cs
-    INNER JOIN courses c ON cs.course_id = c.id
-    WHERE c.teacher_id = ?) AS total_students,
+    INNER JOIN courses c ON cs.course_id = c.id) AS total_students,
  (SELECT COUNT(*)
     FROM course_students cs
-    INNER JOIN courses c ON cs.course_id = c.id
-    WHERE c.teacher_id = ?) AS total_enrollments,
- (SELECT COUNT(*) FROM courses WHERE teacher_id = ?) AS total_courses
+    INNER JOIN courses c ON cs.course_id = c.id) AS total_enrollments,
+ (SELECT COUNT(*) FROM courses) AS total_courses
 ";
 $stats_stmt = $conn->prepare($stats_sql);
-$stats_stmt->bind_param("iii", $teacher_id, $teacher_id, $teacher_id);
 $stats_stmt->execute();
 $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
   'total_students' => 0,
@@ -66,9 +62,9 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
  * - course_students: course_id, student_id, created_at (optional)
  * - courses: id, title, teacher_id
  */
-$where = "WHERE c.teacher_id = ? AND u.role = 'student'";
-$params = [$teacher_id];
-$types = "i";
+$where = "WHERE u.role = 'student'";
+$params = [];
+$types = "";
 
 if ($course_id_int !== null) {
   $where .= " AND c.id = ?";
@@ -107,7 +103,9 @@ INNER JOIN users u ON cs.student_id = u.id
 LIMIT 300
 ";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param($types, ...$params);
+if (!empty($types)) {
+    $stmt->bind_param($types, ...$params);
+}
 $stmt->execute();
 $rows = $stmt->get_result();
 
@@ -297,8 +295,7 @@ $rows = $stmt->get_result();
           <select name="course_id" required>
             <option value="" disabled selected>เลือกหลักสูตร</option>
             <?php
-            $courses_stmt2 = $conn->prepare("SELECT id, title FROM courses WHERE teacher_id = ? ORDER BY title ASC");
-            $courses_stmt2->bind_param("i", $teacher_id);
+            $courses_stmt2 = $conn->prepare("SELECT id, title FROM courses ORDER BY title ASC");
             $courses_stmt2->execute();
             $courses_rs2 = $courses_stmt2->get_result();
             while ($c2 = $courses_rs2->fetch_assoc()):

@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             error('Invalid course ID');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
             error('Access denied');
@@ -65,17 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($test_id <= 0)
             error('Invalid test ID');
 
-        // Check ownership via course
+        // Check ownership via course - REMOVED
         $check = $conn->prepare("
             SELECT t.id 
             FROM course_tests t
             INNER JOIN courses c ON t.course_id = c.id
-            WHERE t.id = ? AND c.teacher_id = ?
+            WHERE t.id = ?
         ");
-        $check->bind_param("ii", $test_id, $teacher_id);
+        $check->bind_param("i", $test_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
-            error('Access denied');
+            error('Test not found');
 
         // Get questions
         $q_stmt = $conn->prepare("SELECT * FROM test_questions WHERE test_id = ? ORDER BY order_index ASC, id ASC");
@@ -107,17 +107,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($test_id <= 0)
             error('Invalid test ID');
 
-        // Check ownership
+        // Check ownership - REMOVED
         $check = $conn->prepare("
             SELECT t.id 
             FROM course_tests t
             INNER JOIN courses c ON t.course_id = c.id
-            WHERE t.id = ? AND c.teacher_id = ?
+            WHERE t.id = ?
         ");
-        $check->bind_param("ii", $test_id, $teacher_id);
+        $check->bind_param("i", $test_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
-            error('Access denied');
+            error('Test not found');
 
         $sql = "
             SELECT 
@@ -162,8 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Invalid input');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
             error('Access denied');
@@ -216,16 +216,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('No content to import (File or Text required)');
 
         // Check ownership
+        // Check ownership - REMOVED
         $check = $conn->prepare("
             SELECT t.id, t.course_id 
             FROM course_tests t
             INNER JOIN courses c ON t.course_id = c.id
-            WHERE t.id = ? AND c.teacher_id = ?
+            WHERE t.id = ?
         ");
-        $check->bind_param("ii", $test_id, $teacher_id);
+        $check->bind_param("i", $test_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
-            error('Access denied');
+            error('Test not found');
 
         // Parse Aiken
         // Format:
@@ -325,12 +326,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM test_questions q
             INNER JOIN course_tests t ON q.test_id = t.id
             INNER JOIN courses c ON t.course_id = c.id
-            WHERE q.id = ? AND c.teacher_id = ?
+            WHERE q.id = ?
         ");
-        $check->bind_param("ii", $id, $teacher_id);
+        $check->bind_param("i", $id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
-            error('Access denied or not found');
+            error('Question not found');
 
         // Delete question (cascade should handle answers if foreign keys set, but manual is safer)
         $conn->begin_transaction();
@@ -387,18 +388,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // But simpler to just delete questions and let foreign keys or second query handle answers?
         // We do manual delete of answers usually.
 
-        // 1. Get valid IDs that belong to teacher
+        // 1. Get valid IDs
         $sql = "
             SELECT q.id 
             FROM test_questions q
             INNER JOIN course_tests t ON q.test_id = t.id
             INNER JOIN courses c ON t.course_id = c.id
-            WHERE c.teacher_id = ? AND q.id IN ($placeholders)
+            WHERE q.id IN ($placeholders)
         ";
         
         $stmt = $conn->prepare($sql);
-        $params = array_merge([$teacher_id], $ids);
-        $stmt->bind_param("i" . $types, ...$params);
+        $params = $ids;
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $res = $stmt->get_result();
         
@@ -447,12 +448,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM student_test_attempts sta
             INNER JOIN course_tests t ON sta.test_id = t.id
             INNER JOIN courses c ON t.course_id = c.id
-            WHERE sta.id = ? AND c.teacher_id = ?
+            WHERE sta.id = ?
         ");
-        $check->bind_param("ii", $attempt_id, $teacher_id);
+        $check->bind_param("i", $attempt_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
-            error('Access denied or not found');
+            error('Attempt not found');
 
         $conn->begin_transaction();
         try {
@@ -509,8 +510,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Title is required');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -535,8 +536,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($content === '') error('Content is required');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -565,9 +566,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SELECT a.id 
             FROM announcements a 
             INNER JOIN courses c ON a.course_id = c.id 
-            WHERE a.id = ? AND c.teacher_id = ?
+            WHERE a.id = ?
         ");
-        $check->bind_param("ii", $id, $teacher_id);
+        $check->bind_param("i", $id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Announcement not found or permission denied');
@@ -594,9 +595,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SELECT a.id 
             FROM announcements a 
             INNER JOIN courses c ON a.course_id = c.id 
-            WHERE a.id = ? AND c.teacher_id = ?
+            WHERE a.id = ?
         ");
-        $check->bind_param("ii", $id, $teacher_id);
+        $check->bind_param("i", $id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Announcement not found or permission denied');
@@ -620,8 +621,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Invalid course ID');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -656,12 +657,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM assignment_submissions s
             INNER JOIN assignments a ON s.assignment_id = a.id
             INNER JOIN courses c ON a.course_id = c.id
-            WHERE s.id = ? AND c.teacher_id = ?
+            WHERE s.id = ?
         ");
-        $check->bind_param("ii", $submission_id, $teacher_id);
+        $check->bind_param("i", $submission_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
-            error('Submission not found or permission denied');
+            error('Submission not found');
         }
 
         // If grade is empty string, check if we should set to NULL or keep it empty?
@@ -703,8 +704,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Due date is required');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -737,9 +738,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SELECT a.id 
             FROM assignments a 
             INNER JOIN courses c ON a.course_id = c.id 
-            WHERE a.id = ? AND c.teacher_id = ?
+            WHERE a.id = ?
         ");
-        $check->bind_param("ii", $id, $teacher_id);
+        $check->bind_param("i", $id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Assignment not found or permission denied');
@@ -766,9 +767,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SELECT a.id 
             FROM assignments a 
             INNER JOIN courses c ON a.course_id = c.id 
-            WHERE a.id = ? AND c.teacher_id = ?
+            WHERE a.id = ?
         ");
-        $check->bind_param("ii", $id, $teacher_id);
+        $check->bind_param("i", $id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Assignment not found or permission denied');
@@ -795,8 +796,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Student key (ID or Email) is required');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -862,8 +863,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Level is required');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -908,8 +909,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Invalid course ID');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -951,8 +952,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('No students selected');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -993,8 +994,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Invalid IDs');
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Course not found or permission denied');
@@ -1020,8 +1021,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-        $check->bind_param("ii", $course_id, $teacher_id);
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0) {
             error('Access denied');
@@ -1075,9 +1076,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Check ownership via course
         $query = "SELECT m.id, m.file_path FROM course_materials m 
                   INNER JOIN courses c ON m.course_id = c.id 
-                  WHERE m.id = ? AND c.teacher_id = ?";
+                  WHERE m.id = ?";
         $stmt = $conn->prepare($query);
-        $stmt->bind_param("ii", $id, $teacher_id);
+        $stmt->bind_param("i", $id);
         $stmt->execute();
         $res = $stmt->get_result();
 
@@ -1120,6 +1121,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $conn->prepare("UPDATE users SET role = ? WHERE id = ?");
         $stmt->bind_param("si", $new_role, $user_id);
+
+        if ($stmt->execute()) {
+            success();
+        } else {
+            error('Database error: ' . $stmt->error);
+        }
+    }
+
+    // --- UPDATE USER LEVEL ---
+    elseif ($action === 'update_user_level') {
+        $user_id = (int) ($_POST['user_id'] ?? 0);
+        $new_level = trim($_POST['new_level'] ?? '');
+
+        if ($user_id <= 0)
+            error('Invalid user ID');
+        
+        // Validate level if necessary, e.g. 1, 2, 3
+        if (!in_array($new_level, ['1', '2', '3'])) {
+            // Optional: allow blank or other values? tailored to '1','2','3' as seen in user_permissions.php
+            error('Invalid level');
+        }
+
+        $stmt = $conn->prepare("UPDATE users SET courseLevel = ? WHERE id = ?");
+        $stmt->bind_param("si", $new_level, $user_id);
 
         if ($stmt->execute()) {
             success();

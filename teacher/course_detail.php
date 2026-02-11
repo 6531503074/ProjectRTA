@@ -21,8 +21,9 @@ function h($str)
 }
 
 // 1. Get Course Details
-$course_stmt = $conn->prepare("SELECT * FROM courses WHERE id = ? AND teacher_id = ?");
-$course_stmt->bind_param("ii", $course_id, $teacher_id);
+// 1. Get Course Details
+$course_stmt = $conn->prepare("SELECT * FROM courses WHERE id = ?");
+$course_stmt->bind_param("i", $course_id);
 $course_stmt->execute();
 $course = $course_stmt->get_result()->fetch_assoc();
 

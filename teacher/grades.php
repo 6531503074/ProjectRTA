@@ -43,8 +43,7 @@ $assignment_id_int = ($assignment_id !== '' && ctype_digit($assignment_id)) ? (i
 /**
  * Load teacher courses for dropdowns
  */
-$courses_stmt = $conn->prepare("SELECT id, title FROM courses WHERE teacher_id = ? ORDER BY title ASC");
-$courses_stmt->bind_param("i", $teacher_id);
+$courses_stmt = $conn->prepare("SELECT id, title FROM courses ORDER BY title ASC");
 $courses_stmt->execute();
 $courses_rs = $courses_stmt->get_result();
 
@@ -55,17 +54,15 @@ if ($course_id_int !== null) {
     $a_stmt = $conn->prepare("SELECT a.id, a.title
                               FROM assignments a
                               INNER JOIN courses c ON a.course_id = c.id
-                              WHERE c.teacher_id = ? AND a.course_id = ?
+                              WHERE a.course_id = ?
                               ORDER BY a.id DESC");
-    $a_stmt->bind_param("ii", $teacher_id, $course_id_int);
+    $a_stmt->bind_param("i", $course_id_int);
 } else {
     $a_stmt = $conn->prepare("SELECT a.id, a.title
                               FROM assignments a
                               INNER JOIN courses c ON a.course_id = c.id
-                              WHERE c.teacher_id = ?
                               ORDER BY a.id DESC
                               LIMIT 200");
-    $a_stmt->bind_param("i", $teacher_id);
 }
 $a_stmt->execute();
 $assignments_rs = $a_stmt->get_result();
@@ -79,19 +76,17 @@ SELECT
     FROM assignment_submissions s
     INNER JOIN assignments a ON s.assignment_id = a.id
     INNER JOIN courses c ON a.course_id = c.id
-    WHERE c.teacher_id = ? AND s.grade IS NULL) AS pending_total,
+    WHERE s.grade IS NULL) AS pending_total,
  (SELECT COUNT(*)
     FROM assignment_submissions s
     INNER JOIN assignments a ON s.assignment_id = a.id
     INNER JOIN courses c ON a.course_id = c.id
-    WHERE c.teacher_id = ? AND s.grade IS NOT NULL) AS graded_total,
+    WHERE s.grade IS NOT NULL) AS graded_total,
  (SELECT COUNT(*)
     FROM assignments a
-    INNER JOIN courses c ON a.course_id = c.id
-    WHERE c.teacher_id = ?) AS assignments_total
+    INNER JOIN courses c ON a.course_id = c.id) AS assignments_total
 ";
 $stats_stmt = $conn->prepare($stats_sql);
-$stats_stmt->bind_param("iii", $teacher_id, $teacher_id, $teacher_id);
 $stats_stmt->execute();
 $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
     'pending_total' => 0,
@@ -107,9 +102,9 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
  * - courses: id, teacher_id, title
  * - users: id, name, email, rank
  */
-$where = "WHERE c.teacher_id = ?";
-$params = [$teacher_id];
-$types = "i";
+$where = "WHERE 1=1";
+$params = [];
+$types = "";
 
 if ($course_id_int !== null) {
     $where .= " AND c.id = ?";
@@ -164,7 +159,9 @@ LIMIT 400
 ";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param($types, ...$params);
+if (!empty($types)) {
+    $stmt->bind_param($types, ...$params);
+}
 $stmt->execute();
 $submissions = $stmt->get_result();
 
@@ -185,7 +182,7 @@ $submissions = $stmt->get_result();
     <div class="main-content">
         <div class="page-header">
             <div>
-                <h1>คะแนน</h1>
+                <h1>คะแนนงาน</h1>
             </div>
             <div class="actions-row">
                 <button class="btn btn-secondary" onclick="location.reload()">รีเฟรช</button>
@@ -309,7 +306,7 @@ $submissions = $stmt->get_result();
                                         <div class="muted">กำหนดส่ง: <?= h($s['due_date'] ?? '-') ?></div>
                                         <?php if (!empty($s['file_path'])): ?>
                                             <div style="margin-top:8px;">
-                                                <a class="btn btn-sm btn-ghost" href="../<?= h($s['file_path']) ?>" target="_blank" rel="noopener">
+                                                <a class="btn btn-sm btn-view" href="../<?= h($s['file_path']) ?>" target="_blank" rel="noopener">
                                                     ดูไฟล์ที่ส่ง
                                                 </a>
                                             </div>

@@ -13,19 +13,16 @@ $teacher_name = $user["name"];
 
 // Get statistics
 // Total courses
-$courses_query = "SELECT COUNT(*) as total FROM courses WHERE teacher_id = ?";
+$courses_query = "SELECT COUNT(*) as total FROM courses";
 $courses_stmt = $conn->prepare($courses_query);
-$courses_stmt->bind_param("i", $teacher_id);
 $courses_stmt->execute();
 $total_courses = $courses_stmt->get_result()->fetch_assoc()['total'];
 
 // Total students
 $students_query = "SELECT COUNT(DISTINCT cs.student_id) as total 
                   FROM course_students cs 
-                  INNER JOIN courses c ON cs.course_id = c.id 
-                  WHERE c.teacher_id = ?";
+                  INNER JOIN courses c ON cs.course_id = c.id";
 $students_stmt = $conn->prepare($students_query);
-$students_stmt->bind_param("i", $teacher_id);
 $students_stmt->execute();
 $total_students = $students_stmt->get_result()->fetch_assoc()['total'];
 
@@ -34,9 +31,8 @@ $pending_query = "SELECT COUNT(*) as total
                  FROM assignment_submissions asub
                  INNER JOIN assignments a ON asub.assignment_id = a.id
                  INNER JOIN courses c ON a.course_id = c.id
-                 WHERE c.teacher_id = ? AND asub.grade IS NULL";
+                 WHERE asub.grade IS NULL";
 $pending_stmt = $conn->prepare($pending_query);
-$pending_stmt->bind_param("i", $teacher_id);
 $pending_stmt->execute();
 $pending_submissions = $pending_stmt->get_result()->fetch_assoc()['total'];
 
@@ -45,11 +41,9 @@ $recent_courses_query = "SELECT c.*,
                         (SELECT COUNT(*) FROM course_students WHERE course_id = c.id) as student_count,
                         (SELECT COUNT(*) FROM assignments WHERE course_id = c.id) as assignment_count
                         FROM courses c 
-                        WHERE c.teacher_id = ? 
                         ORDER BY c.id DESC 
                         LIMIT 4";
 $recent_courses_stmt = $conn->prepare($recent_courses_query);
-$recent_courses_stmt->bind_param("i", $teacher_id);
 $recent_courses_stmt->execute();
 $recent_courses = $recent_courses_stmt->get_result();
 
@@ -60,11 +54,9 @@ $recent_submissions_query = "SELECT asub.*, a.title as assignment_title,
                              INNER JOIN assignments a ON asub.assignment_id = a.id
                              INNER JOIN courses c ON a.course_id = c.id
                              INNER JOIN users u ON asub.student_id = u.id
-                             WHERE c.teacher_id = ?
                              ORDER BY asub.submitted_at DESC
-                             LIMIT 10";
+                              LIMIT 3";
 $recent_submissions_stmt = $conn->prepare($recent_submissions_query);
-$recent_submissions_stmt->bind_param("i", $teacher_id);
 $recent_submissions_stmt->execute();
 $recent_submissions = $recent_submissions_stmt->get_result();
 
@@ -74,20 +66,18 @@ $upcoming_assignments_query = "SELECT a.*, c.title as course_title,
                                (SELECT COUNT(*) FROM course_students WHERE course_id = c.id) as student_count
                                FROM assignments a
                                INNER JOIN courses c ON a.course_id = c.id
-                               WHERE c.teacher_id = ? AND a.due_date >= CURDATE()
+                               WHERE a.due_date >= CURDATE()
                                ORDER BY a.due_date ASC
-                               LIMIT 5";
+                               LIMIT 3";
 $upcoming_assignments_stmt = $conn->prepare($upcoming_assignments_query);
-$upcoming_assignments_stmt->bind_param("i", $teacher_id);
 $upcoming_assignments_stmt->execute();
 $upcoming_assignments = $upcoming_assignments_stmt->get_result();
 $upcoming_assignments_stmt->execute();
 $upcoming_assignments = $upcoming_assignments_stmt->get_result();
 
 // Get all courses for announcement dropdown
-$all_courses_query = "SELECT id, title FROM courses WHERE teacher_id = ? ORDER BY title ASC";
+$all_courses_query = "SELECT id, title FROM courses ORDER BY title ASC";
 $all_courses_stmt = $conn->prepare($all_courses_query);
-$all_courses_stmt->bind_param("i", $teacher_id);
 $all_courses_stmt->execute();
 $all_courses = $all_courses_stmt->get_result();
 ?>
@@ -158,7 +148,7 @@ $all_courses = $all_courses_stmt->get_result();
             </div>
             <div class="quick-action-btn" onclick="window.location.href='grades.php'">
                 <div class="icon">💯</div>
-                <div class="label">จัดการคะแนน</div>
+                <div class="label">จัดการคะแนนงาน</div>
             </div>
         </div>
 
@@ -306,7 +296,7 @@ $all_courses = $all_courses_stmt->get_result();
         <div class="modal-content">
             <div class="modal-header">
                 <h2>📢 สร้างประกาศ</h2>
-                <span class="close" onclick="closeAnnouncementModal()">&times;</span>
+                <span class="modal-close" onclick="closeAnnouncementModal()">×</span>
             </div>
             <form id="announcementForm" onsubmit="createAnnouncement(event)">
                 <div class="form-group">
@@ -376,7 +366,7 @@ $all_courses = $all_courses_stmt->get_result();
         }
 
         function gradeSubmission(submissionId) {
-            window.location.href = `grade_submission.php?id=${submissionId}`;
+            window.location.href = `grades.php?id=${submissionId}`;
         }
     </script>
 </body>

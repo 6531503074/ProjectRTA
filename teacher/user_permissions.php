@@ -165,11 +165,11 @@ $result = $conn->query($query);
                                 <td><?= h($row['email']) ?></td>
                                 <td>
                                     <?php if ($row['role'] === 'student'): ?>
-                                        <?php 
-                                            $levels = ['1' => 'ขั้นเริ่มต้น', '2' => 'ขั้นกลาง', '3' => 'ขั้นสูง'];
-                                            $level = $row['courseLevel'] ?? '-';
-                                            echo '<span class="level-badge">' . ($levels[$level] ?? 'ไม่ระบุ') . '</span>';
-                                        ?>
+                                        <select id="level_<?= $row['id'] ?>" class="role-select" onchange="updateLevel(<?= $row['id'] ?>)">
+                                            <option value="1" <?= ($row['courseLevel'] == '1') ? 'selected' : '' ?>>ขั้นเริ่มต้น</option>
+                                            <option value="2" <?= ($row['courseLevel'] == '2') ? 'selected' : '' ?>>ขั้นกลาง</option>
+                                            <option value="3" <?= ($row['courseLevel'] == '3') ? 'selected' : '' ?>>ขั้นสูง</option>
+                                        </select>
                                     <?php else: ?>
                                         <span class="level-badge" style="background:#e9d8fd; color:#553c9a">Admin</span>
                                     <?php endif; ?>
@@ -214,6 +214,39 @@ $result = $conn->query($query);
     </style>
 
     <script>
+        function updateLevel(userId) {
+            const levelSelect = document.getElementById(`level_${userId}`);
+            const newLevel = levelSelect.value;
+            
+            if (!confirm(`คุณต้องการเปลี่ยนระดับของผู้ใช้นี้เป็นระดับ ${newLevel}?`)) {
+                location.reload(); // Reset selection if cancelled
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('user_id', userId);
+            formData.append('new_level', newLevel);
+
+            fetch('../api/teacher_api.php?action=update_user_level', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('อัปเดตระดับเรียบร้อย!');
+                    // No need to reload, value is selected
+                } else {
+                    alert(data.message || 'ไม่สามารถอัปเดตระดับได้');
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('เกิดข้อผิดพลาด');
+            });
+        }
+
         function updateRole(userId) {
             const roleSelect = document.getElementById(`role_${userId}`);
             const newRole = roleSelect.value;

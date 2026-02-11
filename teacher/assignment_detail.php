@@ -24,9 +24,9 @@ function h($str)
 $sql = "SELECT a.*, c.title as course_title, c.id as course_id
         FROM assignments a
         JOIN courses c ON a.course_id = c.id
-        WHERE a.id = ? AND c.teacher_id = ?";
+        WHERE a.id = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $assignment_id, $teacher_id);
+$stmt->bind_param("i", $assignment_id);
 $stmt->execute();
 $assignment = $stmt->get_result()->fetch_assoc();
 

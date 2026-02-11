@@ -26,23 +26,20 @@ $sort = $_GET['sort'] ?? 'newest'; // newest | title_asc | students_desc | pendi
  */
 $stats_sql = "
 SELECT
- (SELECT COUNT(*) FROM courses WHERE teacher_id = ?) AS total_courses,
+ (SELECT COUNT(*) FROM courses) AS total_courses,
  (SELECT COUNT(DISTINCT cs.student_id)
     FROM course_students cs
-    INNER JOIN courses c ON cs.course_id = c.id
-    WHERE c.teacher_id = ?) AS total_students,
+    INNER JOIN courses c ON cs.course_id = c.id) AS total_students,
  (SELECT COUNT(*)
     FROM assignments a
-    INNER JOIN courses c ON a.course_id = c.id
-    WHERE c.teacher_id = ?) AS total_assignments,
+    INNER JOIN courses c ON a.course_id = c.id) AS total_assignments,
  (SELECT COUNT(*)
     FROM assignment_submissions s
     INNER JOIN assignments a ON s.assignment_id = a.id
     INNER JOIN courses c ON a.course_id = c.id
-    WHERE c.teacher_id = ? AND s.grade IS NULL) AS pending_grades
+    WHERE s.grade IS NULL) AS pending_grades
 ";
 $stats_stmt = $conn->prepare($stats_sql);
-$stats_stmt->bind_param("iiii", $teacher_id, $teacher_id, $teacher_id, $teacher_id);
 $stats_stmt->execute();
 $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
     'total_courses' => 0,
@@ -53,18 +50,13 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
 
 /**
  * Courses list
- * Assumed schema:
- * - courses: id, teacher_id, title, description (optional)
- * - course_students: course_id, student_id
- * - assignments: course_id
- * - assignment_submissions + assignments for pending grades
  */
-$where = "WHERE c.teacher_id = ?";
-$params = [$teacher_id];
-$types = "i";
+$where = "";
+$params = [];
+$types = "";
 
 if ($q !== '') {
-    $where .= " AND (c.title LIKE ? OR c.description LIKE ?)";
+    $where = "WHERE (c.title LIKE ? OR c.description LIKE ?)";
     $like = "%{$q}%";
     $params[] = $like;
     $params[] = $like;
@@ -92,7 +84,9 @@ LIMIT 200
 ";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param($types, ...$params);
+if (!empty($types)) {
+    $stmt->bind_param($types, ...$params);
+}
 $stmt->execute();
 $courses = $stmt->get_result();
 ?>

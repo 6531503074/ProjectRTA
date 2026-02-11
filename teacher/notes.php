@@ -14,10 +14,8 @@ $teacher_id = $user["id"];
 $query = "SELECT a.id, a.content, a.created_at, c.title as course_title 
           FROM announcements a 
           INNER JOIN courses c ON a.course_id = c.id 
-          WHERE c.teacher_id = ? 
           ORDER BY a.created_at DESC";
 $stmt = $conn->prepare($query);
-$stmt->bind_param("i", $teacher_id);
 $stmt->execute();
 $announcements = $stmt->get_result();
 ?>

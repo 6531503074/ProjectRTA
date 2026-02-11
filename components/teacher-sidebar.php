@@ -350,7 +350,7 @@ $teacher_courses = $courses_stmt->get_result();
                 งาน
             </a>
             <a href="grades.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'grades.php' ? 'active' : '' ?>">
-                คะแนน
+                คะแนนงาน
             </a>
         </div>
 

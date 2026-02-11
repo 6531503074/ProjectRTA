@@ -130,6 +130,9 @@ function sendAssignmentMessage($conn, $user_id) {
     $insert_stmt->bind_param("iis", $assignment_id, $user_id, $message);
     
     if ($insert_stmt->execute()) {
+        // Get inserted message ID immediately
+        $msg_id = $conn->insert_id;
+
         // Mark as read for sender (optional, but good for consistency)
         $read_query = "INSERT INTO assignment_chat_reads (assignment_id, user_id, last_read_at) 
                        VALUES (?, ?, NOW()) 
@@ -139,7 +142,6 @@ function sendAssignmentMessage($conn, $user_id) {
         $read_stmt->execute();
 
         // Get inserted message
-        $msg_id = $conn->insert_id;
         $msg_query = "SELECT c.*, u.name, u.avatar, u.role 
                       FROM assignment_chat c
                       INNER JOIN users u ON c.user_id = u.id
