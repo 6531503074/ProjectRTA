@@ -68,6 +68,8 @@ $announcements = $stmt->get_result();
             line-height: 1.6;
             margin-bottom: 15px;
             white-space: pre-wrap;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .actions {

@@ -350,9 +350,6 @@ $submissions = $stmt->get_result();
                                                 <button class="btn btn-primary" onclick="saveGrade(<?= (int)$s['submission_id'] ?>)">
                                                     บันทึก
                                                 </button>
-                                                <button class="btn btn-ghost" onclick="goGradePage(<?= (int)$s['submission_id'] ?>)">
-                                                    หน้าเต็ม
-                                                </button>
                                                 <div id="msg_<?= (int)$s['submission_id'] ?>" class="muted" style="margin-top:6px;"></div>
                                             </div>
                                         </div>

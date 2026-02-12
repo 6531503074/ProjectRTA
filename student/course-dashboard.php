@@ -75,7 +75,7 @@ $assignments_stmt->execute();
 $assignments = $assignments_stmt->get_result();
 
 // Get Active Tests
-$tests_query = "SELECT * FROM course_tests WHERE course_id = ? AND is_active = 1 ORDER BY test_type DESC"; // Pre then Post? No, 'pre' < 'post'. DESC means Post then Pre. Let's sorting later or just handle loop.
+$tests_query = "SELECT * FROM course_tests WHERE course_id = ? AND is_active = 1 ORDER BY test_type DESC, id ASC"; // Pre then Post? No, 'pre' < 'post'. DESC means Post then Pre. Let's sorting later or just handle loop.
 $tests_stmt = $conn->prepare($tests_query);
 $tests_stmt->bind_param("i", $course_id);
 $tests_stmt->execute();
@@ -1122,9 +1122,11 @@ function th_date($date)
                         <h2>📝 แบบทดสอบ (Tests)</h2>
                     </div>
                     <?php
-                    // Reset pointer if needed or just loop
+                    $test_counters = ['pre' => 0, 'post' => 0];
                     while ($test = $active_tests->fetch_assoc()):
-                        $typeLabel = ($test['test_type'] === 'pre') ? 'แบบทดสอบก่อนเรียน (Pre-test)' : 'แบบทดสอบหลังเรียน (Post-test)';
+                        $type = $test['test_type'];
+                        $test_counters[$type]++;
+                        $typeLabel = !empty($test['title']) ? htmlspecialchars($test['title']) : (($type === 'pre' ? 'แบบทดสอบก่อนเรียน (Pre-test)' : 'แบบทดสอบหลังเรียน (Post-test)') . " ชุดที่ " . $test_counters[$type]);
 
                         // Check if submitted
                         $chk = $conn->prepare("SELECT score, total_points FROM student_test_attempts WHERE test_id = ? AND student_id = ?");

@@ -181,6 +181,10 @@ $recent_announcements = $recent_announcements_stmt->get_result();
             margin-bottom: 30px;
         }
 
+        .content-grid > .card {
+            min-width: 0;
+        }
+
         .card {
             background: white;
             border-radius: 10px;
@@ -325,6 +329,8 @@ $recent_announcements = $recent_announcements_stmt->get_result();
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .announcement-item .time {
@@ -452,7 +458,7 @@ $recent_announcements = $recent_announcements_stmt->get_result();
                                 $day = $date->format('j');
                                 $month = $months_th[(int)$date->format('n')];
                                 $year = (int)$date->format('Y') + 543;
-                                echo "$day $month $year";
+                                echo "$day $month $year เวลา " . $date->format('H:i') . " น.";
                             ?></div>
                         </div>
                     <?php endwhile; ?>

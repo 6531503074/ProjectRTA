@@ -276,6 +276,7 @@ CREATE TABLE `course_tests` (
   `id` int(11) NOT NULL,
   `course_id` int(11) NOT NULL,
   `test_type` enum('pre','post') NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 0,
   `time_limit_minutes` int(11) DEFAULT 0,
   `shuffle_questions` tinyint(1) DEFAULT 0,
@@ -287,8 +288,8 @@ CREATE TABLE `course_tests` (
 -- Dumping data for table `course_tests`
 --
 
-INSERT INTO `course_tests` (`id`, `course_id`, `test_type`, `is_active`, `time_limit_minutes`, `shuffle_questions`, `shuffle_answers`, `created_at`) VALUES
-(1, 6, 'pre', 1, 0, 0, 0, '2026-02-06 01:00:37');
+INSERT INTO `course_tests` (`id`, `course_id`, `test_type`, `title`, `is_active`, `time_limit_minutes`, `shuffle_questions`, `shuffle_answers`, `created_at`) VALUES
+(1, 6, 'pre', NULL, 1, 0, 0, 0, '2026-02-06 01:00:37');
 
 -- --------------------------------------------------------
 

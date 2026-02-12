@@ -75,6 +75,18 @@ $mat_stmt->bind_param("i", $course_id);
 $mat_stmt->execute();
 $materials = $mat_stmt->get_result();
 
+// 6. Get Course Tests
+$test_sql = "SELECT * FROM course_tests WHERE course_id = ? ORDER BY test_type DESC, id ASC"; // Post-test first usually? verify order preference. Maybe type desc (pre, post - p, p .. wait pre vs post. post > pre alphabetically? no. pre, post. p, p. r, o. pre > post. )
+// Let's just order by type and ID.
+$test_stmt = $conn->prepare($test_sql);
+$test_stmt->bind_param("i", $course_id);
+$test_stmt->execute();
+$tests_result = $test_stmt->get_result();
+$course_tests = ['pre' => [], 'post' => []];
+while ($row = $tests_result->fetch_assoc()) {
+    $course_tests[$row['test_type']][] = $row;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -216,31 +228,93 @@ $materials = $mat_stmt->get_result();
             <div class="card">
                 <div class="card-header">
                     <h2>แบบทดสอบ (Tests)</h2>
-                    <a href="../api/export_scores.php?course_id=<?= $course_id ?>" target="_blank" class="btn btn-sm btn-outline-success">
-                        📊 Export Scores
-                    </a>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-size: 13px; color: var(--gray); font-weight: 500;">ส่งออกคะแนน:</span>
+                        <a href="../api/export_scores.php?course_id=<?= $course_id ?>" target="_blank" class="btn btn-sm btn-secondary" title="ส่งออกคะแนนทั้งหมด">📊 ทั้งหมด</a>
+                        <a href="../api/export_scores.php?course_id=<?= $course_id ?>&type=pre" target="_blank" class="btn btn-sm btn-secondary" title="ส่งออกเฉพาะ Pre-test">📊 Pre-test</a>
+                        <a href="../api/export_scores.php?course_id=<?= $course_id ?>&type=post" target="_blank" class="btn btn-sm btn-secondary" title="ส่งออกเฉพาะ Post-test">📊 Post-test</a>
+                    </div>
                 </div>
                 <div class="test-list" style="padding: 10px;">
-                    <div class="test-item"
-                        style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #eee; margin-bottom:8px;">
-                        <div>
-                            <div style="font-weight:600;">แบบทดสอบก่อนเรียน (Pre-test)</div>
-                            <div style="font-size:12px; color:#718096;">สำหรับวัดความรู้พื้นฐาน</div>
-                        </div>
-                        <a href="manage_test.php?course_id=<?= $course_id ?>&type=pre"
-                            class="btn btn-sm btn-outline-primary">จัดการ</a>
-                    </div>
-                    <div class="test-item"
-                        style="display:flex; justify-content:space-between; align-items:center; padding:12px;">
-                        <div>
-                            <div style="font-weight:600;">แบบทดสอบหลังเรียน (Post-test)</div>
-                            <div style="font-size:12px; color:#718096;">สำหรับวัดผลสัมฤทธิ์</div>
-                        </div>
-                        <a href="manage_test.php?course_id=<?= $course_id ?>&type=post"
-                            class="btn btn-sm btn-outline-primary">จัดการ</a>
-                    </div>
+                    
+                    <h4 style="margin: 0 0 10px 0; font-size: 16px;">แบบทดสอบก่อนเรียน (Pre-test)</h4>
+                    <?php if (!empty($course_tests['pre'])): ?>
+                        <?php foreach ($course_tests['pre'] as $index => $test): ?>
+                            <div class="test-item"
+                                style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #eee; margin-bottom:8px;">
+                                <div>
+                                    <div style="font-weight:600;"><?= !empty($test['title']) ? htmlspecialchars($test['title']) : "แบบทดสอบก่อนเรียน ชุดที่ " . ($index + 1) ?></div>
+                                    <div style="font-size:12px; color:#718096;">
+                                        <?= $test['is_active'] ? '<span style="color:green;">● เปิดใช้งาน</span>' : '<span style="color:red;">● ไม่เปิดใช้งาน</span>' ?>
+                                        • <?= $test['time_limit_minutes'] > 0 ? $test['time_limit_minutes'] . ' นาที' : 'ไม่จำกัดเวลา' ?>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap: 5px;">
+                                    <a href="manage_test.php?course_id=<?= $course_id ?>&test_id=<?= $test['id'] ?>&type=pre"
+                                        class="btn btn-sm btn-outline-primary">จัดการ</a>
+                                    <button onclick="deleteTest(<?= $test['id'] ?>)" class="btn btn-sm btn-danger" style="padding: 4px 8px;">🗑️</button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p style="color:#aaa; font-size:14px; margin-bottom:10px;">ยังไม่มีแบบทดสอบก่อนเรียน</p>
+                    <?php endif; ?>
+                    <a href="manage_test.php?course_id=<?= $course_id ?>&type=pre" class="btn btn-sm btn-primary" style="margin-bottom: 20px;">+ เพิ่มแบบทดสอบก่อนเรียน</a>
+
+                    <div style="border-top: 1px solid #eee; margin: 10px 0 20px 0;"></div>
+
+                    <h4 style="margin: 0 0 10px 0; font-size: 16px;">แบบทดสอบหลังเรียน (Post-test)</h4>
+                    <?php if (!empty($course_tests['post'])): ?>
+                        <?php foreach ($course_tests['post'] as $index => $test): ?>
+                            <div class="test-item"
+                                style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #eee; margin-bottom:8px;">
+                                <div>
+                                    <div style="font-weight:600;"><?= !empty($test['title']) ? htmlspecialchars($test['title']) : "แบบทดสอบหลังเรียน ชุดที่ " . ($index + 1) ?></div>
+                                    <div style="font-size:12px; color:#718096;">
+                                        <?= $test['is_active'] ? '<span style="color:green;">● เปิดใช้งาน</span>' : '<span style="color:red;">● ปิดใช้งาน</span>' ?>
+                                        • <?= $test['time_limit_minutes'] > 0 ? $test['time_limit_minutes'] . ' นาที' : 'ไม่จำกัดเวลา' ?>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap: 5px;">
+                                    <a href="manage_test.php?course_id=<?= $course_id ?>&test_id=<?= $test['id'] ?>&type=post"
+                                        class="btn btn-sm btn-outline-primary">จัดการ</a>
+                                    <button onclick="deleteTest(<?= $test['id'] ?>)" class="btn btn-sm btn-danger" style="padding: 4px 8px;">🗑️</button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p style="color:#aaa; font-size:14px; margin-bottom:10px;">ยังไม่มีแบบทดสอบหลังเรียน</p>
+                    <?php endif; ?>
+                    <a href="manage_test.php?course_id=<?= $course_id ?>&type=post" class="btn btn-sm btn-primary">+ เพิ่มแบบทดสอบหลังเรียน</a>
+
                 </div>
             </div>
+
+<script>
+function deleteTest(testId) {
+    if(!confirm('คุณต้องการลบแบบทดสอบนี้ใช่หรือไม่? ข้อมูลคะแนนทั้งหมดจะถูกลบไปด้วย')) return;
+    
+    const fd = new FormData();
+    fd.append('test_id', testId);
+
+    fetch('../api/teacher_api.php?action=delete_test', {
+        method: 'POST',
+        body: fd
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Error deleting test');
+    });
+}
+</script>
 
             <!-- Course Materials Column -->
             <div class="card">

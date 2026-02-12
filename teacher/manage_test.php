@@ -28,13 +28,25 @@ if (!$course) {
 }
 
 // Get Test Info
-$test_stmt = $conn->prepare("SELECT * FROM course_tests WHERE course_id = ? AND test_type = ?");
-$test_stmt->bind_param("is", $course_id, $test_type);
-$test_stmt->execute();
-$test = $test_stmt->get_result()->fetch_assoc();
+$test_id = isset($_GET['test_id']) ? (int) $_GET['test_id'] : 0;
 
-// If test doesn't exist logically yet, use defaults
-if (!$test) {
+if ($test_id > 0) {
+    // Edit existing test
+    $test_stmt = $conn->prepare("SELECT * FROM course_tests WHERE id = ? AND course_id = ?");
+    $test_stmt->bind_param("ii", $test_id, $course_id);
+    $test_stmt->execute();
+    $test = $test_stmt->get_result()->fetch_assoc();
+    
+    if (!$test) {
+        // Test not found or not owned by course
+        header("Location: course_detail.php?id=$course_id");
+        exit();
+    }
+    // Ensure type matches URL if needed, or just trust DB? 
+    // URL type might be used for titles. Let's consistency check or just overwrite.
+    $test_type = $test['test_type'];
+} else {
+    // New Test (Create mode)
     $test = [
         'id' => 0,
         'is_active' => 0,
@@ -44,7 +56,24 @@ if (!$test) {
     ];
 }
 
-$test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเรียน (Pre-test)" : "แบบทดสอบหลังเรียน (Post-test)";
+// Get Sequence Number
+$all_tests_stmt = $conn->prepare("SELECT id FROM course_tests WHERE course_id = ? AND test_type = ? ORDER BY id ASC");
+$all_tests_stmt->bind_param("is", $course_id, $test_type);
+$all_tests_stmt->execute();
+$all_tests_res = $all_tests_stmt->get_result();
+$sequence = 0;
+$i = 1;
+$total_existing = $all_tests_res->num_rows;
+while ($row = $all_tests_res->fetch_assoc()) {
+    if ($row['id'] == $test['id']) {
+        $sequence = $i;
+        break;
+    }
+    $i++;
+}
+if ($sequence === 0) $sequence = $total_existing + 1;
+
+$test_label = !empty($test['title']) ? htmlspecialchars($test['title']) : (($test_type === 'pre') ? "แบบทดสอบก่อนเรียน (Pre-test) ชุดที่ $sequence" : "แบบทดสอบหลังเรียน (Post-test) ชุดที่ $sequence");
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -163,6 +192,13 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                 <form id="settingsForm">
                     <input type="hidden" name="course_id" value="<?= $course_id ?>">
                     <input type="hidden" name="type" value="<?= $test_type ?>">
+                    <input type="hidden" name="test_id" value="<?= $test['id'] ?>">
+
+                    <div class="form-group">
+                        <label class="form-label">หัวข้อแบบทดสอบ (Title)</label>
+                        <input type="text" name="title" class="form-control" value="<?= htmlspecialchars($test['title'] ?? '') ?>" placeholder="เช่น แบบทดสอบกลางภาค (เว้นว่างไว้เพื่อใช้ชื่อเริ่มต้น)">
+                        <small style="color: grey;">หากเว้นว่างไว้ ระบบจะใช้ชื่อ "แบบทดสอบ... ชุดที่ X" อัตโนมัติ</small>
+                    </div>
 
                     <div class="form-group">
                         <label class="toggle-switch">
@@ -245,11 +281,17 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                 <table style="width:100%; text-align:left; border-collapse:collapse;">
                     <thead>
                         <tr style="border-bottom:2px solid #eee;">
+                            <th style="padding:10px; width: 40px;">
+                                <input type="checkbox" id="selectAllResults" onchange="toggleSelectAllResults()">
+                            </th>
                             <th style="padding:10px;">นักเรียน</th>
                             <th style="padding:10px;">รหัสนักศึกษา</th>
                             <th style="padding:10px;">คะแนน</th>
                             <th style="padding:10px;">เวลาที่ส่ง</th>
-                            <th style="padding:10px;">Action</th>
+                            <th style="padding:10px;">
+                                <button id="resetSelectedResultsBtn" onclick="resetSelectedResults()" class="btn btn-danger btn-sm" style="display:none; padding:4px 8px; font-size:12px;">Reset Selected (<span id="selectedResultsCount">0</span>)</button>
+                                <span id="actionHeader">Action</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody">
@@ -301,6 +343,15 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                 .then(data => {
                     if (data.success) {
                         currentTestId = data.test_id;
+                        // Update hidden input so next save is an UPDATE not INSERT
+                        let hiddenId = document.querySelector('input[name="test_id"]');
+                        if (hiddenId) hiddenId.value = currentTestId;
+                        
+                        // Update URL without reload to reflect ID (optional but good practice)
+                        const newUrl = new URL(window.location);
+                        newUrl.searchParams.set('test_id', currentTestId);
+                        window.history.pushState({}, '', newUrl);
+
                         alert('บันทึกการตั้งค่าแล้ว');
                     } else {
                         alert('Error: ' + data.message);
@@ -490,6 +541,9 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                         data.results.forEach(r => {
                             html += `
                         <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:10px;">
+                                <input type="checkbox" class="result-checkbox" value="${r.id}" onchange="checkResultsSelection()">
+                            </td>
                             <td style="padding:10px;">${r.student_name}</td>
                             <td style="padding:10px;">${r.student_code || '-'}</td>
                             <td style="padding:10px; font-weight:bold;">${r.score} / ${r.total_points}</td>
@@ -501,6 +555,9 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                         `;
                         });
                         tbody.innerHTML = html;
+                        // Reset selection UI
+                        document.getElementById('selectAllResults').checked = false;
+                        checkResultsSelection();
                     }
                 });
         }
@@ -524,6 +581,58 @@ $test_label = ($test_type === 'pre') ? "แบบทดสอบก่อนเ�
                         alert('Error: ' + data.message);
                     }
                 });
+        }
+
+        function toggleSelectAllResults() {
+            const isChecked = document.getElementById('selectAllResults').checked;
+            document.querySelectorAll('.result-checkbox').forEach(cb => cb.checked = isChecked);
+            checkResultsSelection();
+        }
+
+        function checkResultsSelection() {
+            const count = document.querySelectorAll('.result-checkbox:checked').length;
+            const btn = document.getElementById('resetSelectedResultsBtn');
+            const countSpan = document.getElementById('selectedResultsCount');
+            const actionHeader = document.getElementById('actionHeader');
+            
+            if (count > 0) {
+                btn.style.display = 'inline-block';
+                countSpan.innerText = count;
+                actionHeader.style.display = 'none';
+            } else {
+                btn.style.display = 'none';
+                actionHeader.style.display = 'inline';
+            }
+        }
+
+        function resetSelectedResults() {
+            const checkboxes = document.querySelectorAll('.result-checkbox:checked');
+            if (checkboxes.length === 0) return;
+
+            if (!confirm(`ต้องการล้างผลการสอบของนักเรียนที่เลือก ${checkboxes.length} คน?`)) return;
+
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            
+            const fd = new FormData();
+            ids.forEach(id => fd.append('attempt_ids[]', id));
+
+            fetch('../api/teacher_api.php?action=delete_bulk_student_attempts', {
+                method: 'POST',
+                body: fd
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`รีเซ็ตสำเร็จ ${data.deleted_count} รายการ`);
+                    loadResults();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Connection Error');
+            });
         }
 
         // Init load if existing test

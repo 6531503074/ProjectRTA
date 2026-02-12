@@ -9,6 +9,7 @@ $queries = [
         `id` int(11) NOT NULL AUTO_INCREMENT,
         `course_id` int(11) NOT NULL,
         `test_type` enum('pre','post') NOT NULL,
+        `title` varchar(255) DEFAULT NULL,
         `is_active` tinyint(1) DEFAULT 0,
         `time_limit_minutes` int(11) DEFAULT 0,
         `shuffle_questions` tinyint(1) DEFAULT 0,
@@ -18,6 +19,9 @@ $queries = [
         UNIQUE KEY `unique_course_test` (`course_id`, `test_type`),
         FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;",
+
+    // Alter table to add title if it doesn't exist (safety for existing DBs)
+    "ALTER TABLE `course_tests` ADD COLUMN IF NOT EXISTS `title` varchar(255) DEFAULT NULL AFTER `test_type`;",
 
     // 2. Table for Questions
     "CREATE TABLE IF NOT EXISTS `test_questions` (

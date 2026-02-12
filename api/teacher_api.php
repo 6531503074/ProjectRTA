@@ -44,18 +44,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             error('Access denied');
 
         // Fetch pre and post tests
-        $stmt = $conn->prepare("SELECT * FROM course_tests WHERE course_id = ?");
+        $stmt = $conn->prepare("SELECT * FROM course_tests WHERE course_id = ? ORDER BY id ASC");
         $stmt->bind_param("i", $course_id);
         $stmt->execute();
         $res = $stmt->get_result();
 
-        $tests = ['pre' => null, 'post' => null];
+        $tests = ['pre' => [], 'post' => []];
         while ($row = $res->fetch_assoc()) {
-            $tests[$row['test_type']] = $row;
+            $tests[$row['test_type']][] = $row;
         }
 
-        // Return just null if not exists, frontend will handle "create" logic if needed
-        // Or better, we ensure they exist. For now, just return what we have.
         success(['tests' => $tests]);
     }
 
@@ -153,47 +151,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'save_test_settings') {
         $course_id = (int) ($_POST['course_id'] ?? 0);
         $type = $_POST['type'] ?? '';
+        $title = trim($_POST['title'] ?? '');
         $is_active = (int) ($_POST['is_active'] ?? 0);
         $time_limit = (int) ($_POST['time_limit'] ?? 0);
         $shuffle_q = (int) ($_POST['shuffle_questions'] ?? 0);
         $shuffle_a = (int) ($_POST['shuffle_answers'] ?? 0);
+        $test_id = (int) ($_POST['test_id'] ?? 0);
 
         if ($course_id <= 0 || !in_array($type, ['pre', 'post']))
             error('Invalid input');
 
-        // Check ownership
+        // Check course ownership
         $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
         $check->bind_param("i", $course_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
             error('Access denied');
 
-        // Upsert test
-        // MySQL ON DUPLICATE KEY UPDATE might be tricky if we don't have unique index set up perfectly, 
-        // but we added UNIQUE KEY `unique_course_test` (`course_id`, `test_type`) in migration.
+        if ($test_id > 0) {
+            // UPDATE existing test
+            // Verify ownership of the test
+            $check_test = $conn->prepare("SELECT id FROM course_tests WHERE id = ? AND course_id = ?");
+            $check_test->bind_param("ii", $test_id, $course_id);
+            $check_test->execute();
+            if ($check_test->get_result()->num_rows === 0) {
+                error('Test not found or access denied');
+            }
 
-        $stmt = $conn->prepare("
-            INSERT INTO course_tests (course_id, test_type, is_active, time_limit_minutes, shuffle_questions, shuffle_answers) 
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-            is_active = VALUES(is_active),
-            time_limit_minutes = VALUES(time_limit_minutes),
-            shuffle_questions = VALUES(shuffle_questions),
-            shuffle_answers = VALUES(shuffle_answers)
+            $stmt = $conn->prepare("
+                UPDATE course_tests 
+                SET title = ?, is_active = ?, time_limit_minutes = ?, shuffle_questions = ?, shuffle_answers = ?
+                WHERE id = ?
+            ");
+            if (!$stmt) {
+                error('Prepare failed: ' . $conn->error);
+            }
+            $stmt->bind_param("siiiii", $title, $is_active, $time_limit, $shuffle_q, $shuffle_a, $test_id);
+            if ($stmt->execute()) {
+                success(['test_id' => $test_id]);
+            } else {
+                error('Database error: ' . $stmt->error);
+            }
+
+        } else {
+            // INSERT new test
+            $stmt = $conn->prepare("
+                INSERT INTO course_tests (course_id, test_type, title, is_active, time_limit_minutes, shuffle_questions, shuffle_answers) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            if (!$stmt) {
+                error('Prepare failed: ' . $conn->error);
+            }
+            $stmt->bind_param("issiiii", $course_id, $type, $title, $is_active, $time_limit, $shuffle_q, $shuffle_a);
+
+            if ($stmt->execute()) {
+                success(['test_id' => $stmt->insert_id]);
+            } else {
+                error('Database error: ' . $stmt->error);
+            }
+        }
+    }
+
+    // --- DELETE TEST ---
+    elseif ($action === 'delete_test') {
+        $test_id = (int) ($_POST['test_id'] ?? 0);
+
+        if ($test_id <= 0) error('Invalid test ID');
+
+        // Check ownership via course
+        $check = $conn->prepare("
+            SELECT t.id 
+            FROM course_tests t
+            INNER JOIN courses c ON t.course_id = c.id
+            WHERE t.id = ?
         ");
-        $stmt->bind_param("isiiii", $course_id, $type, $is_active, $time_limit, $shuffle_q, $shuffle_a);
+        $check->bind_param("i", $test_id);
+        $check->execute();
+        if ($check->get_result()->num_rows === 0) {
+            error('Test not found or permission denied');
+        }
+
+        // Delete test
+        $stmt = $conn->prepare("DELETE FROM course_tests WHERE id = ?");
+        $stmt->bind_param("i", $test_id);
 
         if ($stmt->execute()) {
-            // Get the ID
-            $new_id = $stmt->insert_id;
-            if ($new_id == 0) {
-                // Determine ID if updated
-                $id_sql = $conn->prepare("SELECT id FROM course_tests WHERE course_id = ? AND test_type = ?");
-                $id_sql->bind_param("is", $course_id, $type);
-                $id_sql->execute();
-                $new_id = $id_sql->get_result()->fetch_assoc()['id'];
-            }
-            success(['test_id' => $new_id]);
+            success();
         } else {
             error('Database error: ' . $stmt->error);
         }
@@ -472,6 +515,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             $conn->rollback();
             error('Delete failed: ' . $e->getMessage());
+        }
+    }
+
+    // --- DELETE BULK STUDENT ATTEMPTS ---
+    elseif ($action === 'delete_bulk_student_attempts') {
+        $ids = $_POST['attempt_ids'] ?? [];
+        if (!is_array($ids) || empty($ids)) {
+            error('No attempts selected');
+        }
+
+        // Sanitize IDs
+        $ids = array_map('intval', $ids);
+        $ids = array_filter($ids, function($id) { return $id > 0; });
+
+        if (empty($ids)) error('Invalid attempt IDs');
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = str_repeat('i', count($ids));
+
+        // Ownership check
+        $sql = "
+            SELECT sta.id 
+            FROM student_test_attempts sta
+            INNER JOIN course_tests t ON sta.test_id = t.id
+            INNER JOIN courses c ON t.course_id = c.id
+            WHERE sta.id IN ($placeholders)
+        ";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($types, ...$ids);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        $valid_ids = [];
+        while ($row = $res->fetch_assoc()) {
+            $valid_ids[] = $row['id'];
+        }
+        
+        if (empty($valid_ids)) {
+            error('No valid attempts found to delete');
+        }
+
+        $conn->begin_transaction();
+        try {
+            $ph = implode(',', array_fill(0, count($valid_ids), '?'));
+            $types_v = str_repeat('i', count($valid_ids));
+
+            // Delete answers
+            $del_ans = $conn->prepare("DELETE FROM student_test_answers WHERE attempt_id IN ($ph)");
+            $del_ans->bind_param($types_v, ...$valid_ids);
+            $del_ans->execute();
+
+            // Delete attempts
+            $del_att = $conn->prepare("DELETE FROM student_test_attempts WHERE id IN ($ph)");
+            $del_att->bind_param($types_v, ...$valid_ids);
+            $del_att->execute();
+
+            $conn->commit();
+            success(['deleted_count' => count($valid_ids)]);
+        } catch (Exception $e) {
+            $conn->rollback();
+            error('Bulk delete failed: ' . $e->getMessage());
         }
     }
 
