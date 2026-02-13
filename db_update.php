@@ -3,8 +3,24 @@ include "config/db.php";
 
 echo "Starting Database Update...\n";
 
+// 1. Ensure course_tests table has correct columns and remove UNIQUE key if it exists
+echo "Checking course_tests table...\n";
+
+// Add title column if not exists
+$conn->query("ALTER TABLE `course_tests` ADD COLUMN IF NOT EXISTS `title` varchar(255) DEFAULT NULL AFTER `test_type` ");
+
+// Check for old unique constraint and drop it
+$idx_check = $conn->query("SHOW INDEX FROM `course_tests` WHERE Key_name = 'unique_course_test'");
+if ($idx_check && $idx_check->num_rows > 0) {
+    if ($conn->query("ALTER TABLE `course_tests` DROP INDEX `unique_course_test`")) {
+        echo "Successfully dropped old unique constraint `unique_course_test`.\n";
+    } else {
+        echo "Error dropping constraint: " . $conn->error . "\n";
+    }
+}
+
 $queries = [
-    // 1. Table for Course Tests (Pre/Post)
+    // 1. Table for Course Tests (Pre/Post) - Re-affirm table structure without UNIQUE KEY
     "CREATE TABLE IF NOT EXISTS `course_tests` (
         `id` int(11) NOT NULL AUTO_INCREMENT,
         `course_id` int(11) NOT NULL,
@@ -16,12 +32,9 @@ $queries = [
         `shuffle_answers` tinyint(1) DEFAULT 0,
         `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
         PRIMARY KEY (`id`),
-        UNIQUE KEY `unique_course_test` (`course_id`, `test_type`),
+        KEY `course_id` (`course_id`),
         FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;",
-
-    // Alter table to add title if it doesn't exist (safety for existing DBs)
-    "ALTER TABLE `course_tests` ADD COLUMN IF NOT EXISTS `title` varchar(255) DEFAULT NULL AFTER `test_type`;",
 
     // 2. Table for Questions
     "CREATE TABLE IF NOT EXISTS `test_questions` (

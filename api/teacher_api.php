@@ -3,7 +3,9 @@ session_start();
 include "../config/db.php";
 
 header('Content-Type: application/json');
-error_reporting(0); // Suppress warnings to avoid breaking JSON
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+error_reporting(E_ALL); 
+ini_set('display_errors', 0); // Keep display off but mysqli report will throw exceptions caught by try-catch
 
 // Check authentication
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'teacher') {
@@ -11,9 +13,16 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'teacher') {
     exit();
 }
 
-$user = $_SESSION['user'];
-$teacher_id = (int) $user['id'];
-$action = $_GET['action'] ?? '';
+// Check authentication
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'teacher') {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit();
+}
+
+try {
+    $user = $_SESSION['user'];
+    $teacher_id = (int) $user['id'];
+    $action = $_GET['action'] ?? '';
 
 // Helper to return error
 function error($msg)
@@ -129,6 +138,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ORDER BY sta.submit_time DESC
         ";
         $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error('Prepare verify attempt failed: ' . $conn->error);
+        }
         $stmt->bind_param("i", $test_id);
         $stmt->execute();
         $res = $stmt->get_result();
@@ -195,6 +207,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } else {
             // INSERT new test
+            // Duplicate check removed to allow multiple tests per course
+
             $stmt = $conn->prepare("
                 INSERT INTO course_tests (course_id, test_type, title, is_active, time_limit_minutes, shuffle_questions, shuffle_answers) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -337,12 +351,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Insert Question
                 $q_text = implode("\n", $q['text']);
                 $q_stmt = $conn->prepare("INSERT INTO test_questions (test_id, question_text) VALUES (?, ?)");
+                if (!$q_stmt) {
+                    throw new Exception('Prepare question failed: ' . $conn->error);
+                }
                 $q_stmt->bind_param("is", $test_id, $q_text);
                 $q_stmt->execute();
                 $q_id = $q_stmt->insert_id;
 
                 // Insert Options
                 $a_stmt = $conn->prepare("INSERT INTO test_answers (question_id, answer_text, is_correct) VALUES (?, ?, ?)");
+                if (!$a_stmt) {
+                    throw new Exception('Prepare answer failed: ' . $conn->error);
+                }
                 foreach ($q['options'] as $key => $val) {
                     $is_correct = ($key === $q['correct']) ? 1 : 0;
                     $a_stmt->bind_param("isi", $q_id, $val, $is_correct);
@@ -381,11 +401,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Delete answers
             $del_a = $conn->prepare("DELETE FROM test_answers WHERE question_id = ?");
+            if (!$del_a) throw new Exception('Prepare delete answers failed: ' . $conn->error);
             $del_a->bind_param("i", $id);
             $del_a->execute();
 
             // Delete question
             $del_q = $conn->prepare("DELETE FROM test_questions WHERE id = ?");
+            if (!$del_q) throw new Exception('Prepare delete question failed: ' . $conn->error);
             $del_q->bind_param("i", $id);
             $del_q->execute();
 
@@ -441,6 +463,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ";
         
         $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            error('Prepare verify failed: ' . $conn->error);
+        }
         $params = $ids;
         $stmt->bind_param($types, ...$params);
         $stmt->execute();
@@ -463,11 +488,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Delete answers
             $del_a = $conn->prepare("DELETE FROM test_answers WHERE question_id IN ($ph)");
+            if (!$del_a) throw new Exception('Prepare bulk delete answers failed: ' . $conn->error);
             $del_a->bind_param($types_v, ...$valid_ids);
             $del_a->execute();
 
             // Delete questions
             $del_q = $conn->prepare("DELETE FROM test_questions WHERE id IN ($ph)");
+            if (!$del_q) throw new Exception('Prepare bulk delete questions failed: ' . $conn->error);
             $del_q->bind_param($types_v, ...$valid_ids);
             $del_q->execute();
 
@@ -493,6 +520,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             INNER JOIN courses c ON t.course_id = c.id
             WHERE sta.id = ?
         ");
+        if (!$check) error('Prepare check failed: ' . $conn->error);
         $check->bind_param("i", $attempt_id);
         $check->execute();
         if ($check->get_result()->num_rows === 0)
@@ -502,11 +530,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Delete answers first (though cascade might handle it)
             $del_ans = $conn->prepare("DELETE FROM student_test_answers WHERE attempt_id = ?");
+            if (!$del_ans) throw new Exception('Prepare delete student answers failed: ' . $conn->error);
             $del_ans->bind_param("i", $attempt_id);
             $del_ans->execute();
 
             // Delete attempt
             $del_att = $conn->prepare("DELETE FROM student_test_attempts WHERE id = ?");
+            if (!$del_att) throw new Exception('Prepare delete student attempt failed: ' . $conn->error);
             $del_att->bind_param("i", $attempt_id);
             $del_att->execute();
 
@@ -1396,4 +1426,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // If not POST (and mostly not GET because GET exits on success)
     // Actually, if GET falls through here, it means action invalid.
     error('Invalid action or method');
+}
+
+} catch (Throwable $e) {
+    // Catch everything including mysqli_sql_exception
+    echo json_encode([
+        'success' => false, 
+        'message' => 'System Error: ' . $e->getMessage(),
+        'debug' => [
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine(),
+            'db_name' => $conn->query("SELECT DATABASE()")->fetch_row()[0] ?? 'unknown'
+        ]
+    ]);
+    exit();
 }
