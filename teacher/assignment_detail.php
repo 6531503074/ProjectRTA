@@ -97,6 +97,9 @@ while ($row = $students_result->fetch_assoc()) {
                 </p>
             </div>
             <div class="actions-row">
+                <button id="chat-btn-<?= $assignment_id ?>" onclick="openChatModal(<?= $assignment_id ?>, '<?= h($assignment['title']) ?>')" class="btn btn-secondary">
+                    💬 แชท
+                </button>
                 <button onclick="openEditModal()" class="btn btn-secondary">
                     ✏️ แก้ไขงาน
                 </button>
@@ -125,6 +128,7 @@ while ($row = $students_result->fetch_assoc()) {
                     ?>
                 </div>
             </div>
+
 
             <!-- Stats -->
             <div class="stats-grid" style="grid-template-columns: 1fr; margin-bottom: 0; gap: 15px;">
@@ -235,6 +239,28 @@ while ($row = $students_result->fetch_assoc()) {
 
     </div>
 
+    <!-- Chat Modal -->
+    <div class="modal" id="chatModal">
+        <div class="modal-content" style="width: 500px; height: 600px; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3 id="chatTitle">Chat</h3>
+                <span class="modal-close" onclick="closeChatModal()">×</span>
+            </div>
+            
+            <div class="chat-container">
+                <div class="messages-list" id="chatMessages">
+                    <!-- Messages will load here -->
+                    <div style="text-align:center; padding: 20px; color:#a0aec0;">Loading...</div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ..." autocomplete="off">
+                    <button class="btn btn-primary" onclick="sendMessage()">ส่ง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Edit Modal -->
     <div class="modal" id="editModal">
         <div class="modal-content">
@@ -325,7 +351,167 @@ while ($row = $students_result->fetch_assoc()) {
         window.addEventListener('click', (event) => {
             if (event.target.classList.contains('modal')) {
                 event.target.classList.remove('show');
+                if (event.target.id === 'chatModal') {
+                    stopPolling();
+                    loadUnreadCounts();
+                }
             }
+        });
+
+        // --- Chat Logic ---
+        let currentChatId = null;
+        let chatPollInterval = null;
+        const currentUserId = <?= (int)$teacher_id ?>; // Teacher's ID
+
+        function openChatModal(id, title) {
+            // Optimistic update: Remove badge immediately
+            const btn = document.getElementById(`chat-btn-${id}`);
+            if (btn) {
+                const badge = btn.querySelector('.chat-badge');
+                if (badge) badge.remove();
+            }
+
+            currentChatId = id;
+            document.getElementById('chatTitle').textContent = '💬 ' + title;
+            document.getElementById('chatModal').classList.add('show');
+            document.getElementById('chatMessages').innerHTML = '<div style="text-align:center; padding: 20px; color:#a0aec0;">กำลังโหลด...</div>';
+            
+            loadMessages(true);
+            startPolling();
+        }
+        
+        function closeChatModal() {
+            document.getElementById('chatModal').classList.remove('show');
+            stopPolling();
+            currentChatId = null;
+            loadUnreadCounts(); // Refresh badges
+        }
+        
+        function startPolling() {
+            if (chatPollInterval) clearInterval(chatPollInterval);
+            chatPollInterval = setInterval(() => loadMessages(false), 3000);
+        }
+        
+        function stopPolling() {
+            if (chatPollInterval) clearInterval(chatPollInterval);
+        }
+        
+        let lastMessageId = 0;
+        
+        function loadMessages(isFullLoad) {
+            if (!currentChatId) return;
+            
+            const lastId = isFullLoad ? 0 : lastMessageId;
+            
+            fetch(`../api/assignment_chat_api.php?action=get_messages&assignment_id=${currentChatId}&last_id=${lastId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const list = document.getElementById('chatMessages');
+                    
+                    if (isFullLoad) {
+                        list.innerHTML = '';
+                        lastMessageId = 0;
+                    }
+                    
+                    if (data.messages.length > 0) {
+                        lastMessageId = data.messages[data.messages.length - 1].id;
+                        
+                        data.messages.forEach(msg => {
+                            const isMe = (parseInt(msg.user_id) === currentUserId);
+                            const div = document.createElement('div');
+                            div.className = `chat-message ${isMe ? 'me' : 'other'}`;
+                            
+                            // Format timestamp
+                            const date = new Date(msg.created_at);
+                            const timeStr = date.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+                            
+                            div.innerHTML = `
+                                <div class="msg-header">${isMe ? 'คุณ' : msg.name}</div>
+                                <div>${escapeHtml(msg.message)}</div>
+                                <div class="msg-time">${timeStr}</div>
+                            `;
+                            list.appendChild(div);
+                        });
+                        
+                        // Scroll to bottom
+                        list.scrollTop = list.scrollHeight;
+                    } else if (isFullLoad) {
+                        list.innerHTML = '<div style="text-align:center; padding: 20px; color:#a0aec0;">ยังไม่มีข้อความ</div>';
+                    }
+                    
+                    loadUnreadCounts();
+                }
+            })
+            .catch(err => console.error(err));
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg || !currentChatId) return;
+            
+            fetch('../api/assignment_chat_api.php?action=send_message', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    assignment_id: currentChatId,
+                    message: msg
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    input.value = '';
+                    loadMessages(false);
+                } else {
+                    alert('ส่งข้อความไม่สำเร็จ: ' + data.message);
+                }
+            });
+        }
+        
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function escapeHtml(text) {
+            var map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        function loadUnreadCounts() {
+            fetch('../api/assignment_chat_api.php?action=get_unread_counts')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const count = data.counts[currentChatId] || 0;
+                    const btn = document.getElementById(`chat-btn-${currentChatId}`);
+                    if (btn) {
+                        let badge = btn.querySelector('.chat-badge');
+                        if (count > 0) {
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                badge.className = 'chat-badge';
+                                btn.appendChild(badge);
+                            }
+                            badge.textContent = count;
+                        } else if (badge) {
+                            badge.remove();
+                        }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUnreadCounts();
+            setInterval(loadUnreadCounts, 10000);
         });
     </script>
 </body>

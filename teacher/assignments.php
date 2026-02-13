@@ -363,7 +363,7 @@ $stats = $stats_stmt->get_result()->fetch_assoc() ?: [
                                     <td>
                                         <div class="row-actions">
                                             <button class="btn btn-sm btn-secondary" onclick="viewAssignment(<?= (int)$a['id'] ?>)">ดู/จัดการ</button>
-                                            <button id="chat-btn-<?= (int)$a['id'] ?>" class="btn btn-sm btn-ghost" onclick="openChatModal(<?= (int)$a['id'] ?>, '<?= h($a['title']) ?>')">💬 แชท</button>
+                                            <button id="chat-btn-<?= (int)$a['id'] ?>" class="btn btn-sm btn-secondary" onclick="openChatModal(<?= (int)$a['id'] ?>, '<?= h($a['title']) ?>')">💬 แชท</button>
                                             
                                         </div>
                                     </td>

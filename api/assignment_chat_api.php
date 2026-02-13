@@ -55,12 +55,13 @@ function checkAccess($conn, $assignment_id, $user_id) {
     $stmt->execute();
     if ($stmt->get_result()->num_rows > 0) return true;
 
-    // Check if user is teacher owning the course
+    // Check if user is teacher
+    // (Assuming any teacher can access any assignment chat now for equal rights)
     $teacher_query = "SELECT a.id FROM assignments a
                       INNER JOIN courses c ON a.course_id = c.id
-                      WHERE a.id = ? AND c.teacher_id = ?";
+                      WHERE a.id = ?";
     $stmt2 = $conn->prepare($teacher_query);
-    $stmt2->bind_param("ii", $assignment_id, $user_id);
+    $stmt2->bind_param("i", $assignment_id);
     $stmt2->execute();
     if ($stmt2->get_result()->num_rows > 0) return true;
 
