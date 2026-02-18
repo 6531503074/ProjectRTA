@@ -113,7 +113,8 @@ $type_suffix = "";
 if ($type_filter === 'pre') $type_suffix = "_Pre";
 if ($type_filter === 'post') $type_suffix = "_Post";
 
-$filename = "scores" . $type_suffix . "_" . preg_replace('/[^a-zA-Z0-9]/', '_', $course_title) . "_" . date('Y-m-d') . ".csv";
+$filename = "scores" . $type_suffix . "_" .  $course_title . "_" . date('Y-m-d') . ".csv";
+
 
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');

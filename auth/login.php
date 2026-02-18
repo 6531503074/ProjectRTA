@@ -263,7 +263,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <div class="links">
             <a href="../auth/register.php">ยังไม่มีบัญชีผู้ใช้? ลงทะเบียน</a><br>
-            <!-- <a href="../forgot-password.php">Forgot Password?</a> -->
+            <a href="forgot-password.php">ลืมรหัสผ่าน?</a>
         </div>
     </div>
 </body>
