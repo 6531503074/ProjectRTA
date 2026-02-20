@@ -166,9 +166,9 @@ $result = $conn->query($query);
                                 <td>
                                     <?php if ($row['role'] === 'student'): ?>
                                         <select id="level_<?= $row['id'] ?>" class="role-select" onchange="updateLevel(<?= $row['id'] ?>)">
-                                            <option value="1" <?= ($row['courseLevel'] == '1') ? 'selected' : '' ?>>ขั้นเริ่มต้น</option>
-                                            <option value="2" <?= ($row['courseLevel'] == '2') ? 'selected' : '' ?>>ขั้นกลาง</option>
-                                            <option value="3" <?= ($row['courseLevel'] == '3') ? 'selected' : '' ?>>ขั้นสูง</option>
+                                            <option value="1" <?= ($row['courseLevel'] == '1') ? 'selected' : '' ?>>ชั้นต้น</option>
+                                            <option value="2" <?= ($row['courseLevel'] == '2') ? 'selected' : '' ?>>ชั้นสูง</option>
+                                            <option value="3" <?= ($row['courseLevel'] == '3') ? 'selected' : '' ?>>ชั้นสูงพิเศษ</option>
                                         </select>
                                     <?php else: ?>
                                         <span class="level-badge" style="background:#e9d8fd; color:#553c9a">Admin</span>

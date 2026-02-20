@@ -597,7 +597,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             
             <!-- Optional Fields -->
             <div class="optional-section">
-                <div class="optional-header">📋 ข้อมูลเพิ่มเติม (ไม่บังคับ)</div>
+                <div class="optional-header">📋 ข้อมูลเพิ่มเติม</div>
                 
                 <div class="form-row">
                     <div class="form-group">
@@ -612,12 +612,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     </div>
                     
                     <div class="form-group">
-                        <label for="courseLevel">ระดับหลักสูตร</label>
+                        <label for="courseLevel">ระดับหลักสูตร <span class="required">*</span></label>
                         <select id="courseLevel" name="courseLevel">
                             <option value="">-- เลือกระดับ --</option>
-                            <option value="1" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '1') ? 'selected' : ''; ?>>ขั้นเริ่มต้น</option>
-                            <option value="2" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '2') ? 'selected' : ''; ?>>ขั้นกลาง</option>
-                            <option value="3" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '3') ? 'selected' : ''; ?>>ขั้นสูง</option>
+                            <option value="1" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '1') ? 'selected' : ''; ?>>ชั้นต้น</option>
+                            <option value="2" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '2') ? 'selected' : ''; ?>>ชั้นสูง</option>
+                            <option value="3" <?php echo (isset($_POST['courseLevel']) && $_POST['courseLevel'] === '3') ? 'selected' : ''; ?>>ชั้นสูงพิเศษ</option>
                         </select>
                     </div>
                 </div>

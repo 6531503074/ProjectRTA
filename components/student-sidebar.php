@@ -356,7 +356,7 @@ if ($stmt) {
 
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <h2>LMS | Cyber</h2>
+        <h2>RTA | Cyber</h2>
         <div class="user-info">
             <div class="user-avatar"> <?php if (!empty($user['avatar'])): ?> <img src="../<?php echo htmlspecialchars($user['avatar']); ?>" alt="Avatar"> <?php else: ?> 👤 <?php endif; ?> </div>
             <div class="user-details">

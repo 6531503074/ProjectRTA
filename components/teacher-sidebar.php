@@ -305,7 +305,7 @@ $teacher_courses = $courses_stmt->get_result();
 
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <h2>LMS | Cyber</h2>
+        <h2>RTA | Cyber</h2>
         <div class="user-info">
             <div class="user-avatar"> <?php if (!empty($user['avatar'])): ?> <img src="../<?php echo htmlspecialchars($user['avatar']); ?>" alt="Avatar"> <?php else: ?> 👤 <?php endif; ?> </div>
             <div class="user-details">
@@ -418,9 +418,9 @@ $teacher_courses = $courses_stmt->get_result();
             <div class="form-group">
                 <label>ระดับชั้น <span style="color:red">*</span></label>
                 <select name="course_level" class="form-control" required>
-                    <option value="1">🌱 ขั้นเริ่มต้น</option>
-                    <option value="2">🔧 ขั้นกลาง</option>
-                    <option value="3">🚀 ขั้นสูง </option>
+                    <option value="1">🌱 ชั้นต้น</option>
+                    <option value="2">🔧 ชั้นสูง</option>
+                    <option value="3">🚀 ชั้นนสูงพิเศษ </option>
                 </select>
             </div>
             <div class="form-group">

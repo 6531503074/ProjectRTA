@@ -236,9 +236,9 @@ $courses = $stmt->get_result();
                 <div class="form-group">
                     <label class="form-label">ระดับชั้น <span style="color:red">*</span></label>
                     <select id="edit_course_level" name="course_level" class="form-control" required>
-                        <option value="1">🌱 พื้นฐาน (Basic)</option>
-                        <option value="2">🔧 ปานกลาง (Intermediate)</option>
-                        <option value="3">🚀 ขั้นสูง (Advanced)</option>
+                        <option value="1">🌱 ชั้นต้น</option>
+                        <option value="2">🔧 ชั้นสูง </option>
+                        <option value="3">🚀 ชั้นสูงพิเศษ </option>
                     </select>
                 </div>
                 <div class="form-group">

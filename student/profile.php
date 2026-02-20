@@ -242,7 +242,7 @@ $user = $_SESSION["user"];
                     <div class="form-group">
                         <label class="form-label">ระดับชั้นเรียน</label>
                         <?php 
-                            $levels = ['1' => 'ขั้นเริ่มต้น', '2' => 'ขั้นกลาง', '3' => 'ขั้นสูง'];
+                            $levels = ['1' => 'ชั้นต้น', '2' => 'ชั้นสูง', '3' => 'ชั้นสูงพิเศษ'];
                             $levelText = $levels[$user['courseLevel'] ?? ''] ?? 'ไม่ระบุ';
                         ?>
                         <input type="text" class="form-control" value="<?= $levelText ?>" readonly>

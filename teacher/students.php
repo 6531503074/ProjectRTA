@@ -324,9 +324,9 @@ $rows = $stmt->get_result();
             <div style="display:flex; gap:8px;">
                 <select name="student_level" class="form-control" required style="flex:1;">
                     <option value="" disabled selected>เลือกระดับชั้นนักเรียน</option>
-                    <option value="1">🌱 ขั้นเริ่มต้น</option>
-                    <option value="2">🔧 ขั้นกลาง</option>
-                    <option value="3">🚀 ขั้นสูง</option>
+                    <option value="1">🌱 ชั้นต้น</option>
+                    <option value="2">🔧 ชั้นสูง</option>
+                    <option value="3">🚀 ชั้นสูงพิเศษ</option>
                 </select>
                 <button type="submit" class="btn btn-secondary" style="white-space:nowrap;">เพิ่มทั้งระดับ</button>
             </div>

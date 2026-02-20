@@ -118,6 +118,16 @@ if (!$reset_request) {
             cursor: pointer;
             color: #666;
         }
+        .password-strength-bar {
+            height: 4px;
+            border-radius: 2px;
+            margin-top: 5px;
+            transition: width 0.3s ease;
+            background: #e0e0e0;
+        }
+        .password-strength-bar.strength-weak { width: 30%; background: #ff4d4d; }
+        .password-strength-bar.strength-medium { width: 60%; background: #ffb347; }
+        .password-strength-bar.strength-strong { width: 100%; background: #4caf50; }
     </style>
 </head>
 <body>
@@ -142,6 +152,7 @@ if (!$reset_request) {
                     <div class="password-wrapper">
                         <input type="password" id="password" name="password" required minlength="6">
                         <i class="fas fa-eye toggle-password" onclick="togglePass('password')"></i>
+                        <div class="password-strength-bar" id="strengthBar"></div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -170,6 +181,30 @@ if (!$reset_request) {
                 icon.classList.add("fa-eye");
             }
         }
+        
+        // Password strength indicator
+        const passwordInput = document.getElementById('password');
+        const strengthBar = document.getElementById('strengthBar');
+        
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            let strength = 0;
+            
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+            if (password.match(/[0-9]/)) strength++;
+            if (password.match(/[^a-zA-Z0-9]/)) strength++;
+            
+            strengthBar.className = 'password-strength-bar';
+            if (strength === 1 || strength === 2) {
+                strengthBar.classList.add('strength-weak');
+            } else if (strength === 3) {
+                strengthBar.classList.add('strength-medium');
+            } else if (strength === 4) {
+                strengthBar.classList.add('strength-strong');
+            }
+        });
+
     </script>
 </body>
 </html>
