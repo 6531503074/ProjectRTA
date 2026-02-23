@@ -763,17 +763,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error('Course not found or permission denied');
         }
 
-        // Optional: You might want to delete related assignments/students first 
-        // to avoid foreign key constraints if CASCADE isn't set.
-        // For now, we assume database handles CASCADE or simple delete.
+        // Manual cleanup for tables lacking CASCADE DELETE
+        $conn->begin_transaction();
+        try {
+            // 1. Delete announcements (and their reads if any)
+            // Announcement reads have CASCADE on announcement_id
+            $stmt1 = $conn->prepare("DELETE FROM announcements WHERE course_id = ?");
+            $stmt1->bind_param("i", $id);
+            $stmt1->execute();
 
-        $stmt = $conn->prepare("DELETE FROM courses WHERE id = ?");
-        $stmt->bind_param("i", $id);
+            // 2. Delete assignments (and their submissions, chats, etc. - database has CASCADE for these)
+            $stmt2 = $conn->prepare("DELETE FROM assignments WHERE course_id = ?");
+            $stmt2->bind_param("i", $id);
+            $stmt2->execute();
 
-        if ($stmt->execute()) {
+            // 3. Delete course enrollments
+            $stmt3 = $conn->prepare("DELETE FROM course_students WHERE course_id = ?");
+            $stmt3->bind_param("i", $id);
+            $stmt3->execute();
+
+            // 4. Delete the course itself
+            $stmt4 = $conn->prepare("DELETE FROM courses WHERE id = ?");
+            $stmt4->bind_param("i", $id);
+            $stmt4->execute();
+
+            $conn->commit();
             success();
-        } else {
-            error('Database error: ' . $stmt->error);
+        } catch (Exception $e) {
+            $conn->rollback();
+            error('Database error during cleanup: ' . $e->getMessage());
         }
     }
 
