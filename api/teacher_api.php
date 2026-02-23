@@ -155,6 +155,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         success(['results' => $results]);
     }
+
+    // --- SEARCH CANDIDATES (For Multiselect) ---
+    elseif ($action === 'search_candidates') {
+        $course_id = (int) ($_GET['course_id'] ?? 0);
+        $q = trim($_GET['q'] ?? '');
+
+        if ($course_id <= 0)
+            error('Invalid course ID');
+
+        // Check ownership
+        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+        $check->bind_param("i", $course_id);
+        $check->execute();
+        if ($check->get_result()->num_rows === 0) {
+            error('Course not found or permission denied');
+        }
+
+        // Search students NOT in this course
+        $query = "
+            SELECT id, name, email, avatar, rank 
+            FROM users 
+            WHERE role = 'student' 
+            AND (name LIKE ? OR email LIKE ? OR id LIKE ?)
+            AND id NOT IN (
+                SELECT student_id FROM course_students WHERE course_id = ?
+            )
+            ORDER BY name ASC
+            LIMIT 100
+        ";
+        $param = "%{$q}%";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("sssi", $param, $param, $param, $course_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $students = [];
+        while ($row = $result->fetch_assoc()) {
+            $students[] = $row;
+        }
+
+        success(['students' => $students]);
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -1053,46 +1095,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         success(['added_count' => $added_count]);
     }
 
-    // --- SEARCH CANDIDATES (For Multiselect) ---
-    elseif ($action === 'search_candidates') {
-        $course_id = (int) ($_GET['course_id'] ?? 0);
-        $q = trim($_GET['q'] ?? '');
-
-        if ($course_id <= 0)
-            error('Invalid course ID');
-
-        // Check ownership
-        $check = $conn->prepare("SELECT id FROM courses WHERE id = ?");
-        $check->bind_param("i", $course_id);
-        $check->execute();
-        if ($check->get_result()->num_rows === 0) {
-            error('Course not found or permission denied');
-        }
-
-        // Search students NOT in this course
-        $query = "
-            SELECT id, name, email, avatar, rank 
-            FROM users 
-            WHERE role = 'student' 
-            AND (name LIKE ? OR email LIKE ?)
-            AND id NOT IN (
-                SELECT student_id FROM course_students WHERE course_id = ?
-            )
-            LIMIT 20
-        ";
-        $param = "%{$q}%";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("ssi", $param, $param, $course_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $students = [];
-        while ($row = $result->fetch_assoc()) {
-            $students[] = $row;
-        }
-
-        success(['students' => $students]);
-    }
 
     // --- ADD STUDENTS MULTISELECT ---
     elseif ($action === 'add_students_multiselect') {

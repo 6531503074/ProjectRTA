@@ -283,138 +283,216 @@ $rows = $stmt->get_result();
 
   <!-- Add Student Modal -->
   <div class="modal" id="studentModal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 800px; width: 95%;">
       <div class="modal-header">
         <h3>เพิ่มนักเรียนเข้าคอร์ส</h3>
         <span class="modal-close" onclick="closeStudentModal()">×</span>
       </div>
 
-      <form id="addStudentForm" onsubmit="addStudent(event)">
-        <div style="margin-bottom:12px;">
-          <label>เลือกหลักสูตร *</label>
-          <select name="course_id" required>
-            <option value="" disabled selected>เลือกหลักสูตร</option>
-            <?php
-            $courses_stmt2 = $conn->prepare("SELECT id, title FROM courses ORDER BY title ASC");
-            $courses_stmt2->execute();
-            $courses_rs2 = $courses_stmt2->get_result();
-            while ($c2 = $courses_rs2->fetch_assoc()):
-            ?>
-              <option value="<?= (int)$c2['id'] ?>"><?= h($c2['title']) ?></option>
-            <?php endwhile; ?>
-          </select>
-        </div>
-
-        <div style="margin-bottom:12px;">
-          <label>Student ID หรือ Email *</label>
-          <input type="text" name="student_key" required placeholder="เช่น 123 หรือ student@email.com">
-          <div class="help">ระบบจะหา user role=student แล้วจับลงคอร์สให้</div>
-        </div>
-
-        <button type="submit" class="btn btn-primary" style="width:100%;">เพิ่มนักเรียน</button>
-      </form>
-
-      <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-
-      <div style="margin-bottom:12px;">
-          <h4 style="margin-bottom:10px;">หรือ เพิ่มยกชั้นปี (Bulk Add)</h4>
-          <form id="addStudentLevelForm" onsubmit="addStudentByLevel(event)">
-            <input type="hidden" name="course_id_level" id="course_id_level_input">
-            
-            <div style="display:flex; gap:8px;">
-                <select name="student_level" class="form-control" required style="flex:1;">
-                    <option value="" disabled selected>เลือกระดับชั้นนักเรียน</option>
-                    <option value="1">🌱 ชั้นต้น</option>
-                    <option value="2">🔧 ชั้นสูง</option>
-                    <option value="3">🚀 ชั้นสูงพิเศษ</option>
-                </select>
-                <button type="submit" class="btn btn-secondary" style="white-space:nowrap;">เพิ่มทั้งระดับ</button>
-            </div>
-          </form>
+      <div style="margin-bottom: 20px;">
+        <label style="display:block; margin-bottom:8px; font-weight:600;">1. เลือกหลักสูตรที่ต้องการเพิ่มนักเรียน *</label>
+        <select id="bulk_enroll_course_id" class="form-control" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;">
+          <option value="" disabled selected>-- เลือกหลักสูตร --</option>
+          <?php
+          mysqli_data_seek($courses_rs, 0);
+          while ($c = $courses_rs->fetch_assoc()):
+          ?>
+            <option value="<?= (int)$c['id'] ?>"><?= h($c['title']) ?></option>
+          <?php endwhile; ?>
+        </select>
       </div>
 
+      <div id="enrollment_controls" style="display:none;">
+        <div style="margin-bottom: 15px;">
+            <label style="display:block; margin-bottom:8px; font-weight:600;">2. ค้นหาและเลือกนักเรียน</label>
+            <div style="position:relative;">
+                <input type="text" id="candidate_search" placeholder="ค้นหาด้วยชื่อ, รหัส, หรืออีเมล..." 
+                       style="width:100%; padding:10px 40px 10px 12px; border-radius:8px; border:1px solid #ddd;"
+                       onkeyup="searchCandidates(this.value)">
+                <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:#aaa;">🔍</span>
+            </div>
+        </div>
 
+        <div class="table-wrap" style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
+          <table style="margin-bottom:0;">
+            <thead style="position: sticky; top: 0; background: #fff; z-index: 10; box-shadow: 0 1px 0 #eee;">
+              <tr>
+                <th style="width: 40px; text-align: center;">
+                    <input type="checkbox" id="selectAllStudents" onclick="toggleAllStudents(this)">
+                </th>
+                <th>ชื่อ-นามสกุล</th>
+                <th>อีเมล</th>
+              </tr>
+            </thead>
+            <tbody id="candidate_list">
+                <!-- Students will be rendered here -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="no_students_msg" style="display:none; text-align:center; padding:30px; color:#999;">
+            <div style="font-size:40px; margin-bottom:10px;">🧑‍🎓</div>
+            <div>ไม่มีรายชื่อนักเรียนที่สามารถเพิ่มได้</div>
+        </div>
+
+        <div style="margin-top: 25px; display:flex; gap:12px; justify-content: flex-end;">
+            <button class="btn btn-secondary" onclick="closeStudentModal()" style="min-width:120px;">ยกเลิก</button>
+            <button class="btn btn-primary" onclick="addSelectedStudents()" id="submitEnrollBtn" style="min-width:160px;">เพิ่มนักเรียนที่เลือก</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
     function openStudentModal() {
-      // Sync course selection for bulk form
-      const courseSelect = document.querySelector('#addStudentForm select[name="course_id"]');
-      const levelCourseInput = document.getElementById('course_id_level_input');
+      const modal = document.getElementById('studentModal');
+      const courseSelect = document.getElementById('bulk_enroll_course_id');
+      const controls = document.getElementById('enrollment_controls');
       
-      // Update hidden input when main select changes
-      courseSelect.addEventListener('change', function() {
-          levelCourseInput.value = this.value;
-      });
-      // Init
-      levelCourseInput.value = courseSelect.value;
+      // Reset
+      courseSelect.value = '';
+      controls.style.display = 'none';
+      document.getElementById('candidate_list').innerHTML = '';
+      document.getElementById('candidate_search').value = '';
+      document.getElementById('selectAllStudents').checked = false;
       
-      document.getElementById('studentModal').classList.add('show');
+      // Handle course change
+      courseSelect.onchange = function() {
+          if (this.value) {
+              controls.style.display = 'block';
+              loadAvailableStudents(this.value);
+          } else {
+              controls.style.display = 'none';
+          }
+      };
+
+      modal.classList.add('show');
     }
 
     function closeStudentModal() {
       document.getElementById('studentModal').classList.remove('show');
-      document.getElementById('addStudentForm').reset();
     }
 
-    function addStudent(e) {
-      e.preventDefault();
-      const formData = new FormData(e.target);
+    let searchTimeout;
+    function searchCandidates(q) {
+        clearTimeout(searchTimeout);
+        const courseId = document.getElementById('bulk_enroll_course_id').value;
+        
+        searchTimeout = setTimeout(() => {
+            loadAvailableStudents(courseId, q);
+        }, 300);
+    }
 
-      fetch('../api/teacher_api.php?action=add_student_to_course', {
-          method: 'POST',
-          body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            alert('เพิ่มนักเรียนสำเร็จ!');
-            closeStudentModal();
-            location.reload();
-          } else {
-            alert(data.message || 'เพิ่มนักเรียนไม่สำเร็จ');
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          alert('เกิดข้อผิดพลาด');
+    function loadAvailableStudents(courseId, q = '') {
+        const listDiv = document.getElementById('candidate_list');
+        const noStudentsMsg = document.getElementById('no_students_msg');
+        const tableWrap = listDiv.closest('.table-wrap');
+        const submitBtn = document.getElementById('submitEnrollBtn');
+        
+        listDiv.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">กำลังโหลด...</td></tr>';
+        noStudentsMsg.style.display = 'none';
+        tableWrap.style.display = 'block';
+        submitBtn.disabled = true;
+
+        fetch(`../api/teacher_api.php?action=search_candidates&course_id=${courseId}&q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    renderCandidates(data.students);
+                } else {
+                    listDiv.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:red;">${data.message}</td></tr>`;
+                }
+            })
+            .catch(err => {
+                listDiv.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:red;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            });
+    }
+
+    function renderCandidates(students) {
+        const listDiv = document.getElementById('candidate_list');
+        const noStudentsMsg = document.getElementById('no_students_msg');
+        const tableWrap = listDiv.closest('.table-wrap');
+        const submitBtn = document.getElementById('submitEnrollBtn');
+        
+        if (students.length === 0) {
+            listDiv.innerHTML = '';
+            tableWrap.style.display = 'none';
+            noStudentsMsg.style.display = 'block';
+            submitBtn.disabled = true;
+            return;
+        }
+
+        tableWrap.style.display = 'block';
+        noStudentsMsg.style.display = 'none';
+        submitBtn.disabled = false;
+
+        let html = '';
+        students.forEach(s => {
+            html += `
+                <tr onclick="toggleCheckbox(this)" style="cursor:pointer;">
+                    <td style="text-align:center;">
+                        <input type="checkbox" class="student-select-cb" value="${s.id}" onclick="event.stopPropagation()">
+                    </td>
+                    <td>
+                        <div style="font-weight:600;">${s.rank || ''} ${s.name}</div>
+                    </td>
+                    <td class="muted">${s.email}</td>
+                </tr>
+            `;
         });
+        listDiv.innerHTML = html;
+        document.getElementById('selectAllStudents').checked = false;
     }
 
-    function addStudentByLevel(e) {
-      e.preventDefault();
-      const courseId = document.getElementById('course_id_level_input').value;
-      const level = e.target.student_level.value;
+    function toggleCheckbox(row) {
+        const cb = row.querySelector('.student-select-cb');
+        cb.checked = !cb.checked;
+    }
 
-      if(!courseId) {
-          alert('กรุณาเลือกหลักสูตรด้านบนก่อน');
-          return;
-      }
+    function toggleAllStudents(master) {
+        const checkboxes = document.querySelectorAll('.student-select-cb');
+        checkboxes.forEach(cb => cb.checked = master.checked);
+    }
 
-      if(!confirm(`ยืนยันการเพิ่มนักเรียนระดับ "${level}" ทุกคนเข้าสู่คอร์สนี้?`)) return;
+    function addSelectedStudents() {
+        const courseId = document.getElementById('bulk_enroll_course_id').value;
+        const checkboxes = document.querySelectorAll('.student-select-cb:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
 
-      const formData = new FormData();
-      formData.append('course_id', courseId);
-      formData.append('level', level);
+        if (ids.length === 0) {
+            alert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
+            return;
+        }
 
-      fetch('../api/teacher_api.php?action=add_students_by_level', {
-          method: 'POST',
-          body: formData
+        const btn = document.getElementById('submitEnrollBtn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = 'กำลังบันทึก...';
+
+        const formData = new FormData();
+        formData.append('course_id', courseId);
+        ids.forEach(id => formData.append('student_ids[]', id));
+
+        fetch('../api/teacher_api.php?action=add_students_multiselect', {
+            method: 'POST',
+            body: formData
         })
         .then(r => r.json())
         .then(data => {
-          if (data.success) {
-            alert(`เพิ่มนักเรียนจำนวน ${data.added_count} คนเรียบร้อยแล้ว!`);
-            closeStudentModal();
-            location.reload();
-          } else {
-            alert(data.message || 'เพิ่มไม่สำเร็จ');
-          }
+            if (data.success) {
+                alert(`เพิ่มนักเรียนสำเร็จ ${data.added_count} คน`);
+                closeStudentModal();
+                location.reload();
+            } else {
+                alert(data.message || 'เพิ่มไม่สำเร็จ');
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
         })
         .catch(err => {
-          console.error(err);
-          alert('เกิดข้อผิดพลาด');
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            btn.disabled = false;
+            btn.innerText = originalText;
         });
     }
 
@@ -436,93 +514,6 @@ $rows = $stmt->get_result();
         .catch(err => {
           console.error(err);
           alert('เกิดข้อผิดพลาด');
-        });
-    }
-
-    function viewStudent(studentId) {
-      // ถ้ามีหน้าโปรไฟล์นักเรียนฝั่งครู
-      window.location.href = `student_detail.php?id=${studentId}`;
-    }
-
-    // Multi-Select Logic
-    let searchTimeout;
-    function searchCandidates(q) {
-        clearTimeout(searchTimeout);
-        const courseId = document.getElementById('course_id_level_input').value; // Borrow input from bulk add
-        const listDiv = document.getElementById('candidate_list');
-        
-        if (!courseId) {
-            listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:red;">กรุณาเลือกหลักสูตรด้านบนก่อน</div>';
-            return;
-        }
-
-        if (q.length < 2) {
-            listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">พิมพ์รายชื่ออย่างน้อย 2 ตัวอักษร</div>';
-            return;
-        }
-
-        searchTimeout = setTimeout(() => {
-            fetch(`../api/teacher_api.php?action=search_candidates&course_id=${courseId}&q=${encodeURIComponent(q)}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        renderCandidates(data.students);
-                    }
-                });
-        }, 300);
-    }
-
-    function renderCandidates(students) {
-        const listDiv = document.getElementById('candidate_list');
-        if (students.length === 0) {
-            listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">ไม่พบนักเรียน (หรืออยู่ในคอร์สแล้ว)</div>';
-            return;
-        }
-
-        let html = '';
-        students.forEach(s => {
-            html += `
-                <label style="display:flex; align-items:center; padding:5px; border-bottom:1px solid #f0f0f0; cursor:pointer;">
-                    <input type="checkbox" class="student-select-cb" value="${s.id}" style="margin-right:10px;">
-                    <div style="flex:1;">
-                        <div style="font-weight:600; font-size:13px;">${s.name} (${s.rank || ''})</div>
-                        <div style="font-size:11px; color:#888;">${s.email}</div>
-                    </div>
-                </label>
-            `;
-        });
-        listDiv.innerHTML = html;
-    }
-
-    function addSelectedStudents() {
-        const courseId = document.getElementById('course_id_level_input').value;
-        const checkboxes = document.querySelectorAll('.student-select-cb:checked');
-        const ids = Array.from(checkboxes).map(cb => cb.value);
-
-        if (ids.length === 0) {
-            alert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
-            return;
-        }
-
-        if(!confirm(`ยืนยันการเพิ่มนักเรียน ${ids.length} คน?`)) return;
-
-        const formData = new FormData();
-        formData.append('course_id', courseId);
-        ids.forEach(id => formData.append('student_ids[]', id));
-
-        fetch('../api/teacher_api.php?action=add_students_multiselect', {
-            method: 'POST',
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert(`เพิ่มนักเรียนสำเร็จ ${data.added_count} คน`);
-                closeStudentModal();
-                location.reload();
-            } else {
-                alert(data.message || 'เพิ่มไม่สำเร็จ');
-            }
         });
     }
 
