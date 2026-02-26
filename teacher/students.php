@@ -100,7 +100,7 @@ INNER JOIN courses c ON cs.course_id = c.id
 INNER JOIN users u ON cs.student_id = u.id
 {$where}
 {$orderBy}
-LIMIT 300
+LIMIT 2000
 ";
 $stmt = $conn->prepare($sql);
 if (!empty($types)) {
@@ -200,9 +200,21 @@ $rows = $stmt->get_result();
 
     <!-- List -->
     <div class="card">
-      <div class="card-header" style="margin-bottom:0; border-bottom:none; padding-bottom:10px;">
-        <h2>รายชื่อนักเรียน</h2>
-        <div class="muted">ทั้งหมด <?= $rows->num_rows ?> คน</div>
+      <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0; border-bottom:none; padding-bottom:10px;">
+        <div>
+          <h2>รายชื่อนักเรียน</h2>
+          <div class="muted">ทั้งหมด <span id="totalStudentsCount"><?= $rows->num_rows ?></span> คน</div>
+        </div>
+        <div style="display:flex; align-items:center;">
+          <label style="font-size:14px; margin-right:8px; font-weight:600;">แสดง</label>
+          <select id="pageSize" class="form-control" style="width:80px; padding:6px 10px;" onchange="changePageSize()">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+          <label style="font-size:14px; margin-left:8px; font-weight:600;">แถว</label>
+        </div>
       </div>
       <div class="table-wrap">
         <table>
@@ -222,7 +234,7 @@ $rows = $stmt->get_result();
                 $avatar = $r['avatar'] ?? '';
                 $initial = mb_substr((string)$r['student_name'], 0, 1, 'UTF-8');
                 ?>
-                <tr>
+                <tr class="student-data-row">
                   <td>
                     <div class="student-cell">
                       <div class="avatar">
@@ -278,6 +290,13 @@ $rows = $stmt->get_result();
           </tbody>
         </table>
       </div>
+      
+      <!-- Pagination Controls -->
+      <div id="paginationControls" style="display:flex; justify-content:space-between; align-items:center; padding-top:15px; border-top: 1px solid #edf2f7; margin-top: 15px;">
+        <div id="paginationSummary" style="font-size:14px; color:var(--gray); font-weight:500;"></div>
+        <div id="paginationButtons" style="display:flex; gap:5px;"></div>
+      </div>
+      
     </div>
   </div>
 
@@ -522,6 +541,75 @@ $rows = $stmt->get_result();
         event.target.classList.remove('show');
       }
     });
+
+    // --- Client-Side Pagination Logic ---
+    let currentPage = 1;
+    let pageSize = 5;
+    let allStudentRows = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      allStudentRows = Array.from(document.querySelectorAll('.student-data-row'));
+      const total = allStudentRows.length;
+      if (total > 0) {
+        renderTable();
+      } else {
+        document.getElementById('pageSize').disabled = true;
+        document.getElementById('paginationControls').style.display = 'none';
+      }
+    });
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById('pageSize').value);
+      currentPage = 1;
+      renderTable();
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderTable();
+    }
+
+    function renderTable() {
+      const total = allStudentRows.length;
+      const totalPages = Math.ceil(total / pageSize) || 1;
+      
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+
+      const startIdx = (currentPage - 1) * pageSize;
+      const endIdx = Math.min(startIdx + pageSize, total);
+
+      allStudentRows.forEach((row, index) => {
+        if (index >= startIdx && index < endIdx) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      // Update summary
+      document.getElementById('paginationSummary').innerText = `แสดง ${startIdx + 1}-${endIdx} จากทั้งหมด ${total} คน`;
+
+      // Update buttons
+      let btnHtml = '';
+      btnHtml += `<button class="btn btn-sm btn-secondary" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>ก่อนหน้า</button>`;
+      
+      for (let i = 1; i <= totalPages; i++) {
+        // Show boundary pages and current page +/- 1
+        if (totalPages <= 7 || i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+          btnHtml += `<button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-secondary'}" onclick="goToPage(${i})">${i}</button>`;
+        } else if (i === currentPage - 2 || i === currentPage + 2) {
+          btnHtml += `<span style="padding: 5px; color: var(--gray);">...</span>`;
+        }
+      }
+
+      btnHtml += `<button class="btn btn-sm btn-secondary" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>ถัดไป</button>`;
+      
+      // Cleanup multiple ellipsis
+      btnHtml = btnHtml.replace(/(<span[^>]*>\.\.\.<\/span>){2,}/g, '<span style="padding: 5px; color: var(--gray);">...</span>');
+
+      document.getElementById('paginationButtons').innerHTML = btnHtml;
+    }
   </script>
 </body>
 

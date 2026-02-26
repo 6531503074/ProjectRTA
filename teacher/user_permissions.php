@@ -123,13 +123,25 @@ $result = $conn->query($query);
         </div>
 
         <div class="permission-card">
-            <div class="filter-section">
-                <label>📌 กรองตามบทบาท:</label>
-                <select id="roleFilter" class="filter-select" onchange="filterTable()">
-                    <option value="all">ทั้งหมด</option>
-                    <option value="student">นักเรียน (Students)</option>
-                    <option value="teacher">ครู (Teachers)</option>
-                </select>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <div class="filter-section" style="margin-bottom: 0;">
+                    <label>📌 กรองตามบทบาท:</label>
+                    <select id="roleFilter" class="filter-select" onchange="filterTable()">
+                        <option value="all">ทั้งหมด</option>
+                        <option value="student">นักเรียน (Students)</option>
+                        <option value="teacher">ครู (Teachers)</option>
+                    </select>
+                </div>
+                <div style="display:flex; align-items:center;">
+                    <label style="font-size:14px; margin-right:8px; font-weight:600;">แสดง</label>
+                    <select id="pageSize" class="filter-select" style="width:80px; padding:6px 10px;" onchange="changePageSize()">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <label style="font-size:14px; margin-left:8px; font-weight:600;">แถว</label>
+                </div>
             </div>
 
             <table class="user-table" id="userTable">
@@ -200,6 +212,12 @@ $result = $conn->query($query);
                     <?php endif; ?>
                 </tbody>
             </table>
+            
+            <!-- Pagination Controls -->
+            <div id="paginationControls" style="display:flex; justify-content:space-between; align-items:center; padding-top:15px; border-top: 1px solid #edf2f7; margin-top: 15px;">
+                <div id="paginationSummary" style="font-size:14px; color:#718096; font-weight:500;"></div>
+                <div id="paginationButtons" style="display:flex; gap:5px; align-items:center;"></div>
+            </div>
         </div>
     </div>
 
@@ -310,18 +328,97 @@ $result = $conn->query($query);
                 alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
             });
         }
+        // --- Client-Side Pagination & Filtering Logic ---
+        let currentPage = 1;
+        let pageSize = 5;
+        let allUserRows = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            allUserRows = Array.from(document.querySelectorAll('.user-row'));
+            allUserRows.forEach(row => row.dataset.filtered = 'true');
+            if (allUserRows.length > 0) {
+                renderTable();
+            } else {
+                document.getElementById('pageSize').disabled = true;
+                document.getElementById('paginationControls').style.display = 'none';
+            }
+        });
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById('pageSize').value);
+            currentPage = 1;
+            renderTable();
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+        }
+
         function filterTable() {
             const filterValue = document.getElementById('roleFilter').value;
-            const rows = document.querySelectorAll('.user-row');
 
-            rows.forEach(row => {
+            allUserRows.forEach(row => {
                 const role = row.getAttribute('data-role');
                 if (filterValue === 'all' || role === filterValue) {
-                    row.style.display = '';
+                    row.dataset.filtered = 'true';
                 } else {
-                    row.style.display = 'none';
+                    row.dataset.filtered = 'false';
                 }
             });
+            
+            currentPage = 1;
+            renderTable();
+        }
+
+        function renderTable() {
+            const filteredRows = allUserRows.filter(row => row.dataset.filtered === 'true');
+            const total = filteredRows.length;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const endIdx = Math.min(startIdx + pageSize, total);
+
+            // Hide all rows initially
+            allUserRows.forEach(row => row.style.display = 'none');
+
+            // Show only the visible slice for the current page
+            filteredRows.forEach((row, index) => {
+                if (index >= startIdx && index < endIdx) {
+                    row.style.display = '';
+                }
+            });
+
+            // Update summary text
+            if (total === 0) {
+                document.getElementById('paginationSummary').innerText = `แสดง 0-0 จากทั้งหมด 0 คน`;
+            } else {
+                document.getElementById('paginationSummary').innerText = `แสดง ${startIdx + 1}-${endIdx} จากทั้งหมด ${total} คน`;
+            }
+
+            // Generate pagination buttons
+            let btnHtml = '';
+            
+            btnHtml += `<button style="padding:4px 8px; border-radius:4px; border:1px solid #e2e8f0; background:#f8fafc; cursor:pointer; color:#4a5568;" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>ก่อนหน้า</button>`;
+            
+            for (let i = 1; i <= totalPages; i++) {
+                if (totalPages <= 7 || i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    let activeStyle = i === currentPage ? 'background:#667eea; color:white; border-color:#667eea;' : 'background:#f8fafc; color:#4a5568; border-color:#e2e8f0;';
+                    btnHtml += `<button style="padding:4px 10px; border-radius:4px; border:1px solid; cursor:pointer; margin:0 2px; ${activeStyle}" onclick="goToPage(${i})">${i}</button>`;
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    btnHtml += `<span style="padding: 5px; color: #a0aec0;">...</span>`;
+                }
+            }
+
+            btnHtml += `<button style="padding:4px 8px; border-radius:4px; border:1px solid #e2e8f0; background:#f8fafc; cursor:pointer; color:#4a5568;" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages || total === 0 ? 'disabled' : ''}>ถัดไป</button>`;
+            
+            // Clean up back-to-back ellipses
+            btnHtml = btnHtml.replace(/(<span[^>]*>\.\.\.<\/span>){2,}/g, '<span style="padding: 5px; color: #a0aec0;">...</span>');
+
+            document.getElementById('paginationButtons').innerHTML = btnHtml;
         }
     </script>
 </body>
