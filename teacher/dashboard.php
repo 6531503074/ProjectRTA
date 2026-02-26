@@ -42,7 +42,7 @@ $recent_courses_query = "SELECT c.*,
                         (SELECT COUNT(*) FROM assignments WHERE course_id = c.id) as assignment_count
                         FROM courses c 
                         ORDER BY c.id DESC 
-                        LIMIT 4";
+                        LIMIT 3";
 $recent_courses_stmt = $conn->prepare($recent_courses_query);
 $recent_courses_stmt->execute();
 $recent_courses = $recent_courses_stmt->get_result();
