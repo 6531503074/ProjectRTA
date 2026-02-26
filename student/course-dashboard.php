@@ -1490,7 +1490,7 @@ function th_date($date)
     </div>
 
     <!-- Include Chat Manager -->
-    <script src="../api/chat.js"></script>
+    <script src="../api/chat.js?v=<?= time() ?>"></script>
     <script src="../api/assignment_chat.js"></script>
 
     <script>
@@ -1723,15 +1723,15 @@ function th_date($date)
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('Group created successfully!');
+                    alert('สร้างกลุ่มแชทเรียบร้อยแล้ว 🎉');
                     closeCreateGroupModal();
                     chatManager.loadGroups('my');
                 } else {
-                    alert(result.message || 'Failed to create group');
+                    alert(result.message || 'สร้างกลุ่มแชทไม่สำเร็จ');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('An error occurred');
+                alert('เกิดข้อผิดพลาด โปรดลองใหม่อีกครั้ง');
             }
         }
 

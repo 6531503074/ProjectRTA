@@ -13,7 +13,7 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 
 // Check authentication
 if (!isset($_SESSION["user"])) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    echo json_encode(['success' => false, 'message' => 'คุณไม่ได้รับอนุญาต']);
     exit();
 }
 
@@ -32,6 +32,10 @@ try {
         
         case 'create_group':
             createGroup($conn, $user_id);
+            break;
+            
+        case 'delete_group':
+            deleteGroup($conn, $user_id);
             break;
         
         case 'get_groups':
@@ -59,7 +63,7 @@ try {
             break;
         
         default:
-            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+            echo json_encode(['success' => false, 'message' => 'ไม่พบการทำงาน']);
     }
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -71,7 +75,7 @@ function sendMessage($conn, $user_id) {
     $message = isset($input['message']) ? trim($input['message']) : '';
     
     if ($group_id <= 0 || empty($message)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid input']);
+        echo json_encode(['success' => false, 'message' => 'ข้อมูลไม่ถูกต้อง']);
         return;
     }
     
@@ -82,7 +86,7 @@ function sendMessage($conn, $user_id) {
     $check_stmt->execute();
     
     if ($check_stmt->get_result()->num_rows == 0) {
-        echo json_encode(['success' => false, 'message' => 'Not a member of this group']);
+        echo json_encode(['success' => false, 'message' => 'ไม่ได้เป็นสมาชิกกลุ่ม']);
         return;
     }
     
@@ -105,7 +109,7 @@ function sendMessage($conn, $user_id) {
         
         echo json_encode(['success' => true, 'message' => $msg]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to send message']);
+        echo json_encode(['success' => false, 'message' => 'ส่งข้อความไม่สำเร็จ']);
     }
 }
 
@@ -114,7 +118,7 @@ function getMessages($conn, $user_id) {
     $last_id = isset($_GET['last_id']) ? intval($_GET['last_id']) : 0;
     
     if ($group_id <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Invalid group ID']);
+        echo json_encode(['success' => false, 'message' => 'รหัสกลุ่มไม่ถูกต้อง']);
         return;
     }
     
@@ -125,7 +129,7 @@ function getMessages($conn, $user_id) {
     $check_stmt->execute();
     
     if ($check_stmt->get_result()->num_rows == 0) {
-        echo json_encode(['success' => false, 'message' => 'Not a member']);
+        echo json_encode(['success' => false, 'message' => 'ไม่ได้เป็นสมาชิกกลุ่ม']);
         return;
     }
     
@@ -149,11 +153,12 @@ function getMessages($conn, $user_id) {
 }
 
 // Helper to check if user is teacher of the course
+// Modified to give all teachers equal rights
 function isTeacherOfCourse($conn, $user_id, $course_id) {
-    $stmt = $conn->prepare("SELECT id FROM courses WHERE id = ? AND teacher_id = ?");
-    $stmt->bind_param("ii", $course_id, $user_id);
-    $stmt->execute();
-    return $stmt->get_result()->num_rows > 0;
+    if (isset($_SESSION["user"]) && $_SESSION["user"]["role"] === "teacher") {
+        return true;
+    }
+    return false;
 }
 
 function createGroup($conn, $user_id) {
@@ -162,8 +167,12 @@ function createGroup($conn, $user_id) {
     $name = isset($input['name']) ? trim($input['name']) : '';
     $description = isset($input['description']) ? trim($input['description']) : '';
     
-    if ($course_id <= 0 || empty($name)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid input']);
+    if ($course_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'รหัสรายวิชาไม่ถูกต้อง']);
+        return;
+    }
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'ชื่อกลุ่มต้องไม่ว่าง']);
         return;
     }
     
@@ -178,7 +187,7 @@ function createGroup($conn, $user_id) {
     $is_teacher = isTeacherOfCourse($conn, $user_id, $course_id);
     
     if (!$is_student && !$is_teacher) {
-        echo json_encode(['success' => false, 'message' => 'Not enrolled in course']);
+        echo json_encode(['success' => false, 'message' => 'คุณยังไม่ได้ลงทะเบียนในรายวิชานี้']);
         return;
     }
     
@@ -242,10 +251,9 @@ function getGroups($conn, $user_id) {
                   FROM group_chats g
                   INNER JOIN users u ON g.created_by = u.id
                   INNER JOIN courses c ON g.course_id = c.id
-                  WHERE c.teacher_id = ?
                   ORDER BY g.created_at DESC";
             $stmt = $conn->prepare($query);
-            $stmt->bind_param("iii", $user_id, $user_id, $user_id);
+            $stmt->bind_param("ii", $user_id, $user_id);
         }
     } else {
         // Specific course access
@@ -288,7 +296,8 @@ function getGroups($conn, $user_id) {
         $groups[] = $row;
     }
     
-    echo json_encode(['success' => true, 'groups' => $groups]);
+    $is_teacher = isset($_SESSION["user"]) && $_SESSION["user"]["role"] === 'teacher';
+    echo json_encode(['success' => true, 'groups' => $groups, 'is_teacher' => $is_teacher]);
 }
 
 function joinGroup($conn, $user_id) {
@@ -374,7 +383,7 @@ function leaveGroup($conn, $user_id) {
         $member_count = $member_count_stmt->get_result()->fetch_assoc()['count'];
         
         if ($member_count > 0) {
-            echo json_encode(['success' => false, 'message' => 'As the creator, you cannot leave while other members are still in the group. Please transfer ownership or wait for all members to leave.']);
+            echo json_encode(['success' => false, 'message' => 'ในฐานะผู้สร้างกลุ่ม คุณไม่สามารถออกจากกลุ่มได้ในขณะที่ยังมีสมาชิกคนอื่นอยู่ กรุณาโอนสิทธิ์ความเป็นเจ้าของให้ผู้อื่นก่อน หรือรอให้สมาชิกทั้งหมดออกจากกลุ่มก่อน']);
             return;
         }
     }
@@ -385,9 +394,9 @@ function leaveGroup($conn, $user_id) {
     $delete_stmt->bind_param("ii", $group_id, $user_id);
     
     if ($delete_stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Successfully left the group']);
+        echo json_encode(['success' => true, 'message' => 'ออกจากกลุ่มเรียบร้อยแล้ว']);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to leave group']);
+        echo json_encode(['success' => false, 'message' => 'ออกจากกลุ่มไม่สำเร็จ']);
     }
 }
 
@@ -395,7 +404,7 @@ function getGroupMembers($conn, $user_id) {
     $group_id = isset($_GET['group_id']) ? intval($_GET['group_id']) : 0;
     
     if ($group_id <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Invalid group ID']);
+        echo json_encode(['success' => false, 'message' => 'รหัสกลุ่มไม่ถูกต้อง']);
         return;
     }
     
@@ -406,7 +415,7 @@ function getGroupMembers($conn, $user_id) {
     $check_stmt->execute();
     
     if ($check_stmt->get_result()->num_rows == 0) {
-        echo json_encode(['success' => false, 'message' => 'Not a member']);
+        echo json_encode(['success' => false, 'message' => 'ไม่ได้เป็นสมาชิกกลุ่ม']);
         return;
     }
     
@@ -457,7 +466,7 @@ function markRead($conn, $user_id) {
     $group_id = isset($input['group_id']) ? intval($input['group_id']) : 0;
     
     if ($group_id <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Invalid group ID']);
+        echo json_encode(['success' => false, 'message' => 'รหัสกลุ่มไม่ถูกต้อง']);
         return;
     }
     
@@ -476,7 +485,43 @@ function markRead($conn, $user_id) {
     if ($update_stmt->execute()) {
         echo json_encode(['success' => true]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to mark as read']);
+        echo json_encode(['success' => false, 'message' => 'ทำเครื่องหมายว่าอ่านแล้วไม่สำเร็จ']);
+    }
+}
+
+function deleteGroup($conn, $user_id) {
+    if (!isset($_SESSION["user"]) || $_SESSION["user"]["role"] !== "teacher") {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $group_id = isset($input['group_id']) ? intval($input['group_id']) : 0;
+    
+    if ($group_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'รหัสกลุ่มไม่ถูกต้อง']);
+        return;
+    }
+    
+    $conn->begin_transaction();
+    try {
+        $stmt_msg = $conn->prepare("DELETE FROM group_chat_messages WHERE group_id = ?");
+        $stmt_msg->bind_param("i", $group_id);
+        $stmt_msg->execute();
+        
+        $stmt_mem = $conn->prepare("DELETE FROM group_chat_members WHERE group_id = ?");
+        $stmt_mem->bind_param("i", $group_id);
+        $stmt_mem->execute();
+        
+        $stmt_grp = $conn->prepare("DELETE FROM group_chats WHERE id = ?");
+        $stmt_grp->bind_param("i", $group_id);
+        $stmt_grp->execute();
+        
+        $conn->commit();
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'message' => 'ลบกลุ่มไม่สำเร็จ']);
     }
 }
 

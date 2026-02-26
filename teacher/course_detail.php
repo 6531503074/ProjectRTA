@@ -112,6 +112,9 @@ while ($row = $tests_result->fetch_assoc()) {
                 <p><?= h($course['description'] ?: 'ไม่มีรายละเอียด') ?></p>
             </div>
             <div class="actions-row">
+                <button onclick="chatManager.openCreateGroupModal()" class="btn btn-primary">
+                    💬 สร้างกลุ่มแชท
+                </button>
                 <button
                     onclick="openEditCourseModal(<?= $course_id ?>, '<?= h($course['title']) ?>', `<?= h($course['description']) ?>`)"
                     class="btn btn-secondary">

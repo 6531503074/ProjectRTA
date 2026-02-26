@@ -638,15 +638,52 @@ $teacher_courses = $courses_stmt->get_result();
     </div>
 </div>
 
-<!-- Placeholder for create modal which is required by JS but hidden in global view -->
-<div id="createGroupModal" class="modal" style="display:none;"></div>
+<!-- Group Creation Modal -->
+<div id="createGroupModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>สร้างกลุ่มแชทใหม่</h3>
+            <span class="modal-close" onclick="closeCreateGroupModal()">×</span>
+        </div>
+        <form id="createGroupForm" onsubmit="createGroup(event)">
+            <?php if (isset($course_id) && $course_id > 0): ?>
+                <input type="hidden" name="course_id" value="<?= $course_id ?>">
+            <?php else: ?>
+                <div class="form-group">
+                    <label class="form-label">เลือกวิชา <span style="color:red">*</span></label>
+                    <select name="course_id" class="form-control" required id="group_course_select">
+                        <option value="">-- เลือกวิชา --</option>
+                        <?php 
+                        // Modified to allow any teacher to create a group for any course
+                        $c_stmt = $conn->prepare("SELECT id, title FROM courses ORDER BY title ASC");
+                        $c_stmt->execute();
+                        $c_res = $c_stmt->get_result();
+                        while ($c = $c_res->fetch_assoc()): 
+                        ?>
+                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['title']) ?></option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
 
-<script src="../api/chat.js"></script>
+            <div class="form-group">
+                <label class="form-label">ชื่อกลุ่ม <span style="color:red">*</span></label>
+                <input type="text" name="group_name" class="form-control" required placeholder="เช่น กลุ่มโปรเจกต์ 1">
+            </div>
+            
+
+            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">สร้างกลุ่ม</button>
+        </form>
+    </div>
+</div>
+
+<script src="../api/chat.js?v=<?= time() ?>"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize with courseId = 0 (Global/Teacher View)
+        // Initialize with courseId from PHP context if available
         if (typeof ChatManager !== 'undefined') {
-            chatManager = new ChatManager(0, <?= (int)$_SESSION['user']['id'] ?>);
+            const contextCourseId = <?= isset($course_id) ? (int)$course_id : 0 ?>;
+            chatManager = new ChatManager(contextCourseId, <?= (int)$_SESSION['user']['id'] ?>);
         }
     });
 

@@ -17,6 +17,7 @@ class ChatManager {
             const data = await response.json();
 
             if (data.success) {
+                this.isTeacher = data.is_teacher || false;
                 this.displayGroups(data.groups, filter);
                 this.currentView = 'list';
             }
@@ -30,48 +31,46 @@ class ChatManager {
         const content = document.getElementById('chatContent');
         const isGlobal = !this.courseId; // Global view if no courseId
 
+        let html = '';
         if (groups.length === 0) {
-            content.innerHTML = `
+            html = `
                 <div class="empty-state" style="padding: 60px 20px;">
                     <div class="empty-state-icon">💬</div>
-                    <p>${filter === 'my' ? 'You haven\'t joined any groups yet' : 'No group chats yet'}</p>
-                </div>
-                ${!isGlobal ? `
-                <button class="create-group-btn" onclick="chatManager.openCreateGroupModal()">
-                    ➕ Create New Group
-                </button>` : ''}
-            `;
-            return;
-        }
-
-        let html = '';
-        groups.forEach(group => {
-            const isMember = filter === 'my' || group.is_member > 0;
-            const courseTitle = group.course_title ? `<div style="font-size:11px; color:#667eea; margin-bottom:2px;">${this.escapeHtml(group.course_title)}</div>` : '';
-            const unreadBadge = group.unread_count > 0 ? `<span class="unread-badge" style="background:#e74c3c; color:white; border-radius:50%; padding:2px 8px; font-size:12px; margin-left:8px;">${group.unread_count}</span>` : '';
-
-            html += `
-                <div class="group-chat-item" onclick="chatManager.openGroup(${group.id})">
-                    ${courseTitle}
-                    <div class="name">
-                        ${this.escapeHtml(group.name)}
-                        ${unreadBadge}
-                    </div>
-                    <div class="members">
-                        👥 ${group.member_count} members | 💬 ${group.message_count} messages
-                        ${!isMember ? ' | <span style="color: #667eea; font-weight: 600;">Click to join</span>' : ''}
-                    </div>
+                    <p>${filter === 'my' ? 'คุณยังไม่ได้เข้าร่วมกลุ่มใดๆ' : 'ยังไม่มีกลุ่มแชทในขณะนี้'}</p>
                 </div>
             `;
-        });
+        } else {
+            groups.forEach(group => {
+                const isMember = filter === 'my' || (group.is_member && group.is_member > 0);
+                const courseTitle = group.course_title ? `<div style="font-size:11px; color:#667eea; margin-bottom:2px;">${this.escapeHtml(group.course_title)}</div>` : '';
+                const unreadBadge = (group.unread_count && group.unread_count > 0) ? `<span class="unread-badge" style="background:#e74c3c; color:white; border-radius:50%; padding:2px 8px; font-size:12px; margin-left:8px;">${group.unread_count}</span>` : '';
 
-        if (!isGlobal) {
-            html += `
-                <button class="create-group-btn" onclick="chatManager.openCreateGroupModal()">
-                    ➕ Create New Group
-                </button>
-            `;
+                const deleteIcon = this.isTeacher ? `<div class="delete-group-icon" onclick="event.stopPropagation(); chatManager.deleteGroup(${group.id})" style="color: #e53e3e; cursor: pointer; font-size: 16px; padding: 4px;" title="Delete Group">🗑️</div>` : '';
+
+                html += `
+                    <div class="group-chat-item" onclick="chatManager.openGroup(${group.id})">
+                        ${courseTitle}
+                        <div class="name" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                ${this.escapeHtml(group.name)}
+                                ${unreadBadge}
+                            </div>
+                            ${deleteIcon}
+                        </div>
+                        <div class="members">
+                            👥 ${group.member_count} สมาชิก | 💬 ${group.message_count} ข้อความ
+                            ${!isMember ? ' | <span style="color: #667eea; font-weight: 600;">คลิกเพื่อเข้าร่วม</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            });
         }
+
+        html += `
+            <button class="create-group-btn" onclick="chatManager.openCreateGroupModal()">
+                ➕ สร้างกลุ่มใหม่
+            </button>
+        `;
 
         content.innerHTML = html;
     }
@@ -82,8 +81,8 @@ class ChatManager {
         const response = await fetch(`../api/chat_api.php?action=get_messages&group_id=${groupId}`);
         const data = await response.json();
 
-        if (!data.success && data.message === 'Not a member') {
-            if (confirm('You need to join this group to view messages. Join now?')) {
+        if (!data.success && data.message === 'ไม่ได้เป็นสมาชิกกลุ่ม') {
+            if (confirm('คุณต้องเข้าร่วมกลุ่มนี้เพื่อดูข้อความ เข้าร่วมเลยไหม?')) {
                 await this.joinGroup(groupId);
                 this.openGroup(groupId); // Retry
             }
@@ -115,16 +114,16 @@ class ChatManager {
         try {
             const response = await fetch(`../api/chat_api.php?action=get_group_info&group_id=${groupId}`);
             const data = await response.json();
-            return data.success ? data.group : { name: 'Group Chat' };
+            return data.success ? data.group : { name: 'แชทกลุ่ม' };
         } catch (error) {
-            return { name: 'Group Chat' };
+            return { name: 'แชทกลุ่ม' };
         }
     }
 
     // Show chat window
     showChatWindow(groupId, groupInfo) {
         const chatWindow = document.getElementById('chatWindow') || this.createChatWindow();
-        document.getElementById('chatWindowTitle').textContent = groupInfo.name || 'Group Chat';
+        document.getElementById('chatWindowTitle').textContent = groupInfo.name || 'แชทกลุ่ม';
         chatWindow.style.display = 'flex';
 
         // Hide floating chat list
@@ -140,7 +139,7 @@ class ChatManager {
             <div class="chat-window-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span onclick="chatManager.backToList()" style="cursor: pointer; font-size: 20px; opacity: 0.9;">←</span>
-                    <h3 id="chatWindowTitle">Group Chat</h3>
+                    <h3 id="chatWindowTitle">แชทกลุ่ม</h3>
                 </div>
                 <div style="display: flex; gap: 15px; align-items: center;">
                     <span onclick="chatManager.viewGroupInfo()" style="cursor: pointer; opacity: 0.8;">ℹ️</span>
@@ -149,9 +148,9 @@ class ChatManager {
             </div>
             <div class="chat-messages-container" id="chatMessagesContainer"></div>
             <div class="chat-input-area">
-                <input type="text" id="chatMessageInput" placeholder="Type a message..." 
+                <input type="text" id="chatMessageInput" placeholder="พิมพ์ข้อความ..." 
                        onkeypress="if(event.key==='Enter') chatManager.sendMessage()">
-                <button class="btn-send" onclick="chatManager.sendMessage()">Send</button>
+                <button class="btn-send" onclick="chatManager.sendMessage()">ส่ง</button>
             </div>
         `;
         document.body.appendChild(chatWindow);
@@ -439,7 +438,7 @@ class ChatManager {
         modal.innerHTML = `
             <div class="group-members-content">
                 <div class="group-members-header">
-                    <h3>👥 Group Members</h3>
+                    <h3>👥 สมาชิกกลุ่ม</h3>
                     <span class="group-members-close" onclick="chatManager.closeGroupMembersModal()">×</span>
                 </div>
                 <div class="group-members-list" id="groupMembersList">
@@ -449,7 +448,7 @@ class ChatManager {
                 </div>
                 <div class="group-members-footer">
                     <button class="btn-leave-group" onclick="chatManager.leaveGroup()">
-                        🚪 Leave Group
+                        🚪 ออกจากกลุ่ม
                     </button>
                 </div>
             </div>
@@ -472,7 +471,7 @@ class ChatManager {
         floatingChat.classList.add('show');
         // Reload the current tab
         const activeTab = document.querySelector('.chat-tab.active');
-        const filter = activeTab ? (activeTab.textContent.includes('My Groups') ? 'my' : 'all') : 'my';
+        const filter = activeTab ? ((activeTab.textContent.includes('My Groups') || activeTab.textContent.includes('กลุ่มของฉัน')) ? 'my' : 'all') : 'my';
         this.loadGroups(filter);
     }
 
@@ -581,7 +580,7 @@ class ChatManager {
     async leaveGroup() {
         if (!this.currentGroupId) return;
 
-        if (!confirm('Are you sure you want to leave this group? You can rejoin anytime.')) {
+        if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการออกจากกลุ่มนี้? คุณสามารถเข้าร่วมกลุ่มใหม่ได้ทุกเมื่อ')) {
             return;
         }
 
@@ -595,7 +594,7 @@ class ChatManager {
             const data = await response.json();
 
             if (data.success) {
-                alert('You have left the group');
+                alert('คุณออกจากกลุ่มเรียบร้อยแล้ว');
                 this.closeGroupMembersModal();
                 this.closeChatWindow();
 
@@ -609,6 +608,41 @@ class ChatManager {
         } catch (error) {
             console.error('Error leaving group:', error);
             alert('Failed to leave group');
+        }
+    }
+
+    // Delete group
+    async deleteGroup(groupId) {
+        if (!confirm('การลบกลุ่มแชทนี้จะลบข้อความทั้งหมดอย่างถาวร คุณต้องการดำเนินการต่อหรือไม่?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('../api/chat_api.php?action=delete_group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ group_id: groupId })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('ลบกลุ่มแชทเรียบร้อยแล้ว');
+
+                // If the deleted group was currently open, close the chat window
+                if (this.currentGroupId === groupId) {
+                    this.closeChatWindow();
+                } else {
+                    const activeTab = document.querySelector('.chat-tab.active');
+                    const filter = activeTab ? ((activeTab.textContent.includes('My Groups') || activeTab.textContent.includes('กลุ่มของฉัน')) ? 'my' : 'all') : 'my';
+                    this.loadGroups(filter);
+                }
+            } else {
+                alert(data.message || 'ไม่สามารถลบกลุ่มได้');
+            }
+        } catch (error) {
+            console.error('Error deleting group:', error);
+            alert('ไม่สามารถลบกลุ่มได้');
         }
     }
 
@@ -718,7 +752,7 @@ class ChatManager {
 
         // Refresh list to update badges
         const activeTab = document.querySelector('.chat-tab.active');
-        const filter = activeTab ? (activeTab.textContent.includes('My Groups') ? 'my' : 'all') : 'my';
+        const filter = activeTab ? ((activeTab.textContent.includes('My Groups') || activeTab.textContent.includes('กลุ่มของฉัน')) ? 'my' : 'all') : 'my';
         this.loadGroups(filter);
     }
 
@@ -769,7 +803,7 @@ class ChatManager {
                             <div class="member-name">${this.escapeHtml(member.name)}</div>
                             <div class="member-email">${this.escapeHtml(member.email)}</div>
                         </div>
-                        ${isCreator ? '<span class="member-role">👑 Creator</span>' : ''}
+                        ${isCreator ? '<span class="member-role">👑 ผู้สร้างกลุ่ม</span>' : ''}
                     </div>
                 `;
             });
@@ -797,8 +831,8 @@ class ChatManager {
         const now = new Date();
         const diff = now - date;
 
-        if (diff < 60000) return 'Just now';
-        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+        if (diff < 60000) return 'เพิ่งส่ง';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)} นาทีที่แล้ว`;
         if (diff < 86400000) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
@@ -813,7 +847,7 @@ async function createGroup(e) {
     const formData = new FormData(e.target);
 
     const data = {
-        course_id: chatManager.courseId,
+        course_id: parseInt(formData.get('course_id')) || chatManager.courseId,
         name: formData.get('group_name'),
         description: formData.get('group_description')
     };
@@ -828,7 +862,7 @@ async function createGroup(e) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Group created successfully!');
+            alert('สร้างกลุ่มแชทเรียบร้อยแล้ว 🎉');
             closeCreateGroupModal();
             // Show floating chat and load groups
             document.getElementById('floatingChat').classList.add('show');
@@ -837,11 +871,11 @@ async function createGroup(e) {
             document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
             document.querySelector('.chat-tab:first-child').classList.add('active');
         } else {
-            alert(result.message || 'Failed to create group');
+            alert(result.message || 'ไม่สามารถสร้างกลุ่มได้');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred');
+        alert('เกิดข้อผิดพลาด');
     }
 }
 
@@ -861,7 +895,7 @@ function toggleFloatingChat() {
     if (isShowing) {
         // Load groups based on active tab
         const activeTab = document.querySelector('.chat-tab.active');
-        const filter = activeTab ? (activeTab.textContent.includes('My Groups') ? 'my' : 'all') : 'my';
+        const filter = activeTab ? ((activeTab.textContent.includes('My Groups') || activeTab.textContent.includes('กลุ่มของฉัน')) ? 'my' : 'all') : 'my';
         chatManager.loadGroups(filter);
     }
 }
